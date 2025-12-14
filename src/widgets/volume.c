@@ -50,31 +50,8 @@ lv_obj_t *zmk_widget_volume_obj(struct zmk_widget_volume *widget) {
 }
 
 /* ============================
- *      设置音量
+ *      设置音量（带动画）
  * ============================ */
-/*
-
-void zmk_widget_volume_set(struct zmk_widget_volume *widget, int value) {
-    if (value < 0) value = 0;
-    if (value > 100) value = 100;
-    widget->volume = value;
-
-    lv_bar_set_value(widget->bar, widget->volume, LV_ANIM_ON);
-
-    // 根据音量设置颜色
-    lv_color_t color;
-    if (value <= 30) {
-        color = lv_color_make(0, 255, 0);      // 绿色
-    } else if (value <= 70) {
-        color = lv_color_make(255, 255, 0);    // 黄色
-    } else {
-        color = lv_color_make(255, 0, 0);      // 红色
-    }
-
-    lv_obj_set_style_bg_color(widget->bar, color, LV_PART_INDICATOR);
-}
-*/
-
 void zmk_widget_volume_set(struct zmk_widget_volume *widget, int value) {
     if (!widget) return;
 
@@ -82,8 +59,18 @@ void zmk_widget_volume_set(struct zmk_widget_volume *widget, int value) {
     if (value < 0) value = 0;
     if (value > 100) value = 100;
 
-    // 设置 bar 值
-    lv_bar_set_value(widget->bar, value, LV_ANIM_ON);
+    // 配置动画参数
+    static lv_anim_t anim;
+    lv_anim_init(&anim);
+    lv_anim_set_var(&anim, widget->bar);
+    lv_anim_set_exec_cb(&anim, (lv_anim_exec_xcb_t)lv_bar_set_value);
+    lv_anim_set_values(&anim, widget->volume, value);
+    lv_anim_set_time(&anim, 300);  // 动画时长300ms
+    lv_anim_set_path_cb(&anim, lv_anim_path_ease_out);  // 缓出效果
+    lv_anim_start(&anim);
+
+    // 更新当前音量值
+    widget->volume = value;
 
     // -----------------------
     // indicator 颜色分段渐变

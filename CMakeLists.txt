@@ -12,6 +12,8 @@ zephyr_library_sources(
     src/widgets/volume.c
     src/widgets/battery.c
     src/widgets/layer.c
+    src/widgets/connection.c
+    src/widgets/modifiers.c
 )
 
 target_sources(app PRIVATE
@@ -19,4 +21,5 @@ target_sources(app PRIVATE
     src/fonts/lv_font_jetbrainsmono_20.c
     src/fonts/lv_font_jetbrainsmono_24.c
     src/fonts/lv_font_jetbrainsmono_40.c
+    src/fonts/nerd_modifiers_28.c
 )

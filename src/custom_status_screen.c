@@ -7,6 +7,8 @@
 #include "widgets/volume.h"
 #include "widgets/battery.h"
 #include "widgets/layer.h"
+#include "widgets/connection.h"
+#include "widgets/modifiers.h"
 
 LOG_MODULE_REGISTER(custom_status_screen, LOG_LEVEL_DBG);
 
@@ -23,6 +25,8 @@ static struct zmk_widget_clock clock_widget;
 static struct zmk_widget_volume volume_widget;
 static struct zmk_widget_battery battery_widget;
 static struct zmk_widget_layer layer_widget;
+static struct zmk_widget_connection connection_widget;
+static struct zmk_widget_modifiers modifiers_widget;
 
 /* ============================
  *      HID 工作函数
@@ -80,6 +84,20 @@ lv_obj_t *zmk_display_status_screen(void) {
     lv_obj_add_style(screen, &screen_style, 0);
 
 
+    /* ---- 初始化 Connection Widget ---- */
+    zmk_widget_connection_init(&connection_widget, screen);
+    // 外部对齐：像 clock 一样
+    lv_obj_align(zmk_widget_connection_obj(&connection_widget),
+                LV_ALIGN_TOP_LEFT,
+                15, 12);
+
+
+    /* ---- 初始化 modifiers Widget ---- */
+    zmk_widget_modifiers_init(&modifiers_widget, screen);
+    // 外部对齐：像 clock 一样
+    lv_obj_align(zmk_widget_modifiers_obj(&modifiers_widget), LV_ALIGN_TOP_RIGHT, -15, 12);
+
+
     /* ---- 初始化 Clock Widget ---- */
     zmk_widget_clock_init(&clock_widget, screen);
     lv_obj_align(zmk_widget_clock_obj(&clock_widget), LV_ALIGN_CENTER, 5, -5);
@@ -98,10 +116,8 @@ lv_obj_t *zmk_display_status_screen(void) {
     /* ---- 初始化电池条 ---- */
     // 初始化电池部件
     zmk_widget_battery_bar_init(&battery_widget, screen);
-
     // 设置电池部件高度
     lv_obj_set_height(zmk_widget_battery_bar_obj(&battery_widget), 40);
-
     // 对齐到屏幕底部
     lv_obj_align(zmk_widget_battery_bar_obj(&battery_widget), LV_ALIGN_BOTTOM_MID, 0, -8);
     
