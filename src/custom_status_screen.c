@@ -89,21 +89,14 @@ lv_obj_t *zmk_display_status_screen(void) {
 
 
     /* ---- 初始化电池条 ---- */
-// 初始化电池部件
-zmk_widget_battery_bar_init(&battery_widget, screen);
+    // 初始化电池部件
+    zmk_widget_battery_bar_init(&battery_widget, screen);
 
-// 设置电池部件高度
-lv_obj_set_height(zmk_widget_battery_bar_obj(&battery_widget), 40);
+    // 设置电池部件高度
+    lv_obj_set_height(zmk_widget_battery_bar_obj(&battery_widget), 40);
 
-// 对齐到屏幕底部
-lv_obj_align(zmk_widget_battery_bar_obj(&battery_widget), LV_ALIGN_BOTTOM_MID, 0, 0);
-
-// 设置测试值
-zmk_widget_battery_bar_update(&battery_widget, 80, 30);
-
-// 设置连接状态（可选）
-zmk_widget_battery_bar_set_connected(&battery_widget, 0, true);   // 左电池已连接
-zmk_widget_battery_bar_set_connected(&battery_widget, 1, false);  // 右电池未连接
+    // 对齐到屏幕底部
+    lv_obj_align(zmk_widget_battery_bar_obj(&battery_widget), LV_ALIGN_BOTTOM_MID, 0, -8);
     
 
     LOG_INF("屏幕和 widgets 已创建");
