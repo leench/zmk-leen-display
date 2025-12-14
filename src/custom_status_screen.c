@@ -6,6 +6,7 @@
 #include "widgets/clock.h"
 #include "widgets/volume.h"
 #include "widgets/battery.h"
+#include "widgets/layer.h"
 
 LOG_MODULE_REGISTER(custom_status_screen, LOG_LEVEL_DBG);
 
@@ -21,6 +22,7 @@ static struct k_work hid_work;
 static struct zmk_widget_clock clock_widget;
 static struct zmk_widget_volume volume_widget;
 static struct zmk_widget_battery battery_widget;
+static struct zmk_widget_layer layer_widget;
 
 /* ============================
  *      HID 工作函数
@@ -30,7 +32,7 @@ static void hid_work_handler(struct k_work *work) {
 
     // 没有新 HID 数据
     if (!buf) {
-        LOG_DBG("No HID data");
+        //LOG_DBG("No HID data");
         return;
     }
     LOG_DBG("Processing HID cmd=%d", buf[0]);
@@ -83,7 +85,12 @@ lv_obj_t *zmk_display_status_screen(void) {
     lv_obj_align(zmk_widget_clock_obj(&clock_widget), LV_ALIGN_CENTER, 5, -5);
 
 
-    /* 初始化 Volume Widget */
+    /* ---- 初始化 Layer Widget ---- */
+    // 在时钟的右上角显示层号，总共5层
+    zmk_widget_layer_init(&layer_widget, screen, &clock_widget);
+
+
+    /* ---- 初始化 Volume Widget ---- */
     zmk_widget_volume_init(&volume_widget, screen, &clock_widget);
     // volume.c 内已经处理了对齐和宽度
 

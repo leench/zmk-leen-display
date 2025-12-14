@@ -94,9 +94,9 @@ static void clock_update_display(struct zmk_widget_clock *widget) {
 static void clock_tick(struct k_timer *timer) {
     struct zmk_widget_clock *widget = k_timer_user_data_get(timer);
 
-    if (!widget->has_sync) {
-        return;
-    }
+    // if (!widget->has_sync) {
+    //     return;
+    // }
 
     widget->second++;
     if (widget->second >= 60) {

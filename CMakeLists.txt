@@ -11,6 +11,7 @@ zephyr_library_sources(
     src/widgets/clock.c
     src/widgets/volume.c
     src/widgets/battery.c
+    src/widgets/layer.c
 )
 
 target_sources(app PRIVATE
