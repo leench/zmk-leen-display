@@ -1,0 +1,3 @@
+config ROTATE_DISPLAY_180
+    bool "Rotate the display 180 degrees"
+    default n

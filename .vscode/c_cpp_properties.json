@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                // 2. Zephyr 核心头文件 - 使用你确认的精确路径
+                "/workspaces/zmk/zephyr/include",
+                // 3. 其他必要的Zephyr子系统头文件
+                "/workspaces/zmk/zephyr/drivers",
+                "/workspaces/zmk/zephyr/subsys",
+                // 4. 模块头文件 (根据你的挂载卷 zmk-zephyr-modules)
+                "/workspaces/zmk/modules/**/include"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}
