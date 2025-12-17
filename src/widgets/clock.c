@@ -66,8 +66,8 @@ int zmk_widget_clock_init(struct zmk_widget_clock *widget, lv_obj_t *parent) {
  * 显示更新
  * ========================= */
 static void clock_update_display(struct zmk_widget_clock *widget) {
-    char buf_hm[6];
-    char buf_s[3];
+    char buf_hm[8];
+    char buf_s[4];
 
     snprintf(buf_hm, sizeof(buf_hm), "%02d:%02d",
              widget->hour, widget->minute);
