@@ -9,6 +9,7 @@
 #include "widgets/layer.h"
 #include "widgets/connection.h"
 #include "widgets/modifiers.h"
+#include "widgets/bongo_cat.h"
 
 LOG_MODULE_REGISTER(custom_status_screen, LOG_LEVEL_DBG);
 
@@ -27,6 +28,10 @@ static struct zmk_widget_battery battery_widget;
 static struct zmk_widget_layer layer_widget;
 static struct zmk_widget_connection connection_widget;
 static struct zmk_widget_modifiers modifiers_widget;
+static struct zmk_widget_bongo_cat bongo_cat_widget;
+
+uint8_t system_type = 0;  // 定义并初始化为0（未设置） modifiers.h
+
 
 /* ============================
  *      HID 工作函数
@@ -51,6 +56,17 @@ static void hid_work_handler(struct k_work *work) {
         case 171:  // 音量命令：buf[1]=volume
             if (CONFIG_RAW_HID_REPORT_SIZE >= 2) {
                 zmk_widget_volume_set(&volume_widget, buf[1]);
+            }
+            break;
+
+        case 173:  // 系统类型命令：buf[1]=系统类型 (1=Windows, 2=Linux, 3=macOS)
+            if (CONFIG_RAW_HID_REPORT_SIZE >= 2) {
+                // 保存系统类型到全局变量，供其他模块使用
+                system_type = buf[1];
+                LOG_DBG("System type updated: %d", system_type);
+                
+                // 主动刷新修饰键显示
+                zmk_widget_modifiers_refresh();
             }
             break;
 
@@ -86,16 +102,17 @@ lv_obj_t *zmk_display_status_screen(void) {
 
     /* ---- 初始化 Connection Widget ---- */
     zmk_widget_connection_init(&connection_widget, screen);
-    // 外部对齐：像 clock 一样
-    lv_obj_align(zmk_widget_connection_obj(&connection_widget),
-                LV_ALIGN_TOP_LEFT,
-                15, 12);
+    lv_obj_align(zmk_widget_connection_obj(&connection_widget), LV_ALIGN_TOP_LEFT, 15, 12);
+
+
+    /* ---- 初始化 bonge cat Widget ---- */
+    zmk_widget_bongo_cat_init(&bongo_cat_widget, screen);
+    lv_obj_align(zmk_widget_bongo_cat_obj(&bongo_cat_widget), LV_ALIGN_TOP_RIGHT, -25, 80);
 
 
     /* ---- 初始化 modifiers Widget ---- */
     zmk_widget_modifiers_init(&modifiers_widget, screen);
-    // 外部对齐：像 clock 一样
-    lv_obj_align(zmk_widget_modifiers_obj(&modifiers_widget), LV_ALIGN_TOP_RIGHT, -15, 12);
+    // lv_obj_align(zmk_widget_modifiers_obj(&modifiers_widget), LV_ALIGN_TOP_RIGHT, -25, 50);
 
 
     /* ---- 初始化 Clock Widget ---- */
@@ -104,13 +121,11 @@ lv_obj_t *zmk_display_status_screen(void) {
 
 
     /* ---- 初始化 Layer Widget ---- */
-    // 在时钟的右上角显示层号，总共5层
     zmk_widget_layer_init(&layer_widget, screen, &clock_widget);
 
 
     /* ---- 初始化 Volume Widget ---- */
     zmk_widget_volume_init(&volume_widget, screen, &clock_widget);
-    // volume.c 内已经处理了对齐和宽度
 
 
     /* ---- 初始化电池条 ---- */
@@ -127,9 +142,7 @@ lv_obj_t *zmk_display_status_screen(void) {
     /* ---- 启动 HID 处理定时器 ---- */
     k_work_init(&hid_work, hid_work_handler);
     k_timer_init(&hid_timer, hid_timer_handler, NULL);
-    k_timer_start(&hid_timer,
-                  K_MSEC(HID_UPDATE_PERIOD_MS),
-                  K_MSEC(HID_UPDATE_PERIOD_MS));
+    k_timer_start(&hid_timer, K_MSEC(HID_UPDATE_PERIOD_MS), K_MSEC(HID_UPDATE_PERIOD_MS));
 
     return screen;
 }

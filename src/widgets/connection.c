@@ -15,6 +15,9 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zmk/ble.h>
 #include <zmk/endpoints.h>
 
+#include "fonts/lv_font_symbol_20.h"
+#include "fonts/lv_font_jetbrainsmono_16.h"
+
 // 全局widget链表
 static sys_slist_t widgets = SYS_SLIST_STATIC_INIT(&widgets);
 
@@ -117,17 +120,17 @@ int zmk_widget_connection_init(struct zmk_widget_connection *widget, lv_obj_t *p
     // 图标
     widget->icon = lv_label_create(widget->obj);
     lv_label_set_text(widget->icon, ""); // 初始无图标
-    lv_obj_set_style_text_font(widget->icon, LV_FONT_DEFAULT, 0);
+    lv_obj_set_style_text_font(widget->icon, &lv_font_jetbrainsmono_16, 0);
 
     // 文字 label
     widget->label = lv_label_create(widget->obj);
     lv_label_set_text(widget->label, "");
-    lv_obj_set_style_text_font(widget->label, LV_FONT_DEFAULT, 0);
+    lv_obj_set_style_text_font(widget->label, &lv_font_jetbrainsmono_16, 0);
 
     // profile编号 label
     widget->profile_num = lv_label_create(widget->obj);
     lv_label_set_text(widget->profile_num, "");
-    lv_obj_set_style_text_font(widget->profile_num, LV_FONT_DEFAULT, 0);
+    lv_obj_set_style_text_font(widget->profile_num, &lv_font_jetbrainsmono_16, 0);
 
     // 水平排列：icon -> label -> profile_num
     lv_obj_set_flex_flow(widget->obj, LV_FLEX_FLOW_ROW);
@@ -175,9 +178,9 @@ void zmk_widget_connection_update(struct zmk_widget_connection *widget,
     }
     
     // 设置所有文本对象的字体
-    lv_obj_set_style_text_font(widget->icon, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_font(widget->label, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_font(widget->profile_num, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(widget->icon, &lv_font_symbol_20, 0);
+    lv_obj_set_style_text_font(widget->label, &lv_font_jetbrainsmono_16, 0);
+    lv_obj_set_style_text_font(widget->profile_num, &lv_font_jetbrainsmono_16, 0);
     
     switch (state.status) {
     case CONN_STATUS_USB:

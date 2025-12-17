@@ -9,6 +9,8 @@
 #include <zmk/event_manager.h>
 #include <zmk/keymap.h>
 
+#include "fonts/lv_font_jetbrainsmono_24.h"
+
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 /* ============================
@@ -93,7 +95,8 @@ int zmk_widget_layer_init(
 
     // 样式设置
     lv_obj_set_style_text_color(widget->label, lv_color_make(200, 200, 200), 0);
-    lv_obj_set_style_text_font(widget->label, &lv_font_montserrat_24, 0);
+    //lv_obj_set_style_text_font(widget->label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(widget->label, &lv_font_jetbrainsmono_24, 0);
 
     // ------------------------------
     // 宽度与时钟一致

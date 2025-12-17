@@ -1,4 +1,3 @@
-// src/widgets/battery.c
 #include "battery.h"
 
 #include <lvgl.h>
@@ -25,8 +24,6 @@ struct battery_state {
 typedef struct {
     lv_obj_t *bar;
     lv_obj_t *label;
-    lv_obj_t *nc_bar;
-    lv_obj_t *nc_label;
 } battery_ui_t;
 
 static battery_ui_t battery_uis[ZMK_SPLIT_BLE_PERIPHERAL_COUNT];
@@ -37,47 +34,39 @@ static void set_battery_display(uint8_t source, uint8_t level) {
     
     battery_ui_t *ui = &battery_uis[source];
     
-    // 更新电池条
-    if (ui->bar) {
+    if (!ui->bar || !ui->label) return;
+    
+    if (level == 0) {
+        // 未连接状态：显示红色电池条
+        lv_bar_set_value(ui->bar, 100, LV_ANIM_ON); // 显示满条
+        lv_obj_set_style_bg_color(ui->bar, lv_color_make(180, 40, 40), LV_PART_INDICATOR);
+        lv_obj_set_style_bg_color(ui->bar, lv_color_make(80, 20, 20), LV_PART_MAIN);
+        lv_label_set_text(ui->label, "--");
+        lv_obj_set_style_text_color(ui->label, lv_color_hex(0xFFB802), 0);
+    } else {
+        // 正常连接状态
         lv_bar_set_value(ui->bar, level, LV_ANIM_ON);
         
+        // 设置颜色
         if (level < 20) {
             /* 20%以下：红色系（偏暗红） */
             lv_obj_set_style_bg_color(ui->bar, lv_color_make(180, 40, 40), LV_PART_INDICATOR);
             lv_obj_set_style_bg_color(ui->bar, lv_color_make(80, 20, 20), LV_PART_MAIN);
+            lv_obj_set_style_text_color(ui->label, lv_color_hex(0xFFB802), 0);
         } else if (level < 50) {
             /* 20%-50%：保持原来的橙色系 */
             lv_obj_set_style_bg_color(ui->bar, lv_color_make(211, 144, 15), LV_PART_INDICATOR);
             lv_obj_set_style_bg_color(ui->bar, lv_color_make(110, 78, 7), LV_PART_MAIN);
+            lv_obj_set_style_text_color(ui->label, lv_color_hex(0xFFFFFF), 0);
         } else {
             /* 50%以上：偏白一点的灰色系 */
             lv_obj_set_style_bg_color(ui->bar, lv_color_make(200, 200, 200), LV_PART_INDICATOR);
             lv_obj_set_style_bg_color(ui->bar, lv_color_make(60, 60, 60), LV_PART_MAIN);
+            lv_obj_set_style_text_color(ui->label, lv_color_hex(0xFFFFFF), 0);
         }
-    }
-    
-    // 更新标签
-    if (ui->label) {
-        if (level > 0) {
-            lv_label_set_text_fmt(ui->label, "%d", level);
-            lv_obj_set_style_text_color(ui->label, 
-                level < 20 ? lv_color_hex(0xFFB802) : lv_color_hex(0xFFFFFF), 0);
-            
-            // 显示正常状态
-            lv_obj_set_style_opa(ui->bar, LV_OPA_COVER, LV_PART_MAIN);
-            lv_obj_set_style_opa(ui->label, LV_OPA_COVER, 0);
-            lv_obj_set_style_opa(ui->nc_bar, LV_OPA_TRANSP, 0);
-            lv_obj_set_style_opa(ui->nc_label, LV_OPA_TRANSP, 0);
-        } else {
-            // 未连接状态
-            lv_label_set_text(ui->label, "--");
-            lv_obj_set_style_text_color(ui->label, lv_color_hex(0xe63030), 0);
-            
-            lv_obj_set_style_opa(ui->bar, LV_OPA_TRANSP, LV_PART_MAIN);
-            lv_obj_set_style_opa(ui->label, LV_OPA_TRANSP, 0);
-            lv_obj_set_style_opa(ui->nc_bar, LV_OPA_COVER, 0);
-            lv_obj_set_style_opa(ui->nc_label, LV_OPA_COVER, 0);
-        }
+        
+        // 更新标签文本
+        lv_label_set_text_fmt(ui->label, "%d", level);
     }
 }
 
@@ -121,47 +110,30 @@ static void create_battery_ui(lv_obj_t *parent, int index) {
     lv_obj_set_style_border_opa(container, LV_OPA_TRANSP, 0);
     lv_obj_set_style_pad_all(container, 0, 0);
 
-    // 正常状态电池条
+    // 电池条
     lv_obj_t *bar = lv_bar_create(container);
     lv_obj_set_size(bar, lv_pct(100), 5);
     lv_obj_align(bar, LV_ALIGN_BOTTOM_MID, 0, 0);
-    lv_obj_set_style_bg_color(bar, lv_color_hex(0x202020), LV_PART_MAIN);
+    // 初始化颜色为红色（未连接状态）
+    lv_obj_set_style_bg_color(bar, lv_color_make(80, 20, 20), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(bar, lv_color_make(180, 40, 40), LV_PART_INDICATOR);
     lv_obj_set_style_bg_opa(bar, 255, LV_PART_MAIN);
-    lv_obj_set_style_radius(bar, 1, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(bar, lv_color_hex(0x909090), LV_PART_INDICATOR);
     lv_obj_set_style_bg_opa(bar, 255, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(bar, 1, LV_PART_MAIN);
     lv_obj_set_style_anim_time(bar, 250, 0);
-    lv_bar_set_value(bar, 0, LV_ANIM_OFF);
+    lv_bar_set_value(bar, 100, LV_ANIM_OFF); // 初始显示满条（红色）
 
-    // 正常状态标签
+    // 标签
     lv_obj_t *label = lv_label_create(container);
     lv_obj_set_style_text_font(label, &lv_font_jetbrainsmono_20, 0);
-    lv_obj_set_style_text_color(label, lv_color_white(), 0);
+    lv_obj_set_style_text_color(label, lv_color_hex(0xFFB802), 0); // 初始为橙色
     lv_obj_align(label, LV_ALIGN_CENTER, 0, -3);
     lv_label_set_text(label, "--");
-
-    // 未连接状态电池条
-    lv_obj_t *nc_bar = lv_obj_create(container);
-    lv_obj_set_size(nc_bar, lv_pct(100), 4);
-    lv_obj_align(nc_bar, LV_ALIGN_BOTTOM_MID, 0, -2);
-    lv_obj_set_style_bg_color(nc_bar, lv_color_hex(0x9e2121), LV_PART_MAIN);
-    lv_obj_set_style_radius(nc_bar, 1, LV_PART_MAIN);
-    lv_obj_set_style_opa(nc_bar, LV_OPA_TRANSP, 0);
-
-    // 未连接状态标签
-    lv_obj_t *nc_label = lv_label_create(container);
-    lv_obj_set_style_text_color(nc_label, lv_color_hex(0xe63030), 0);
-    lv_obj_set_style_text_font(nc_label, &lv_font_jetbrainsmono_20, 0);
-    lv_obj_align(nc_label, LV_ALIGN_CENTER, 0, -3);
-    lv_label_set_text(nc_label, "--");
-    lv_obj_set_style_opa(nc_label, LV_OPA_TRANSP, 0);
     
     // 存储UI对象
     battery_uis[index] = (battery_ui_t){
         .bar = bar,
         .label = label,
-        .nc_bar = nc_bar,
-        .nc_label = nc_label,
     };
 }
 
