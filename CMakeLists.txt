@@ -23,6 +23,7 @@ target_sources(app PRIVATE
     src/fonts/lv_font_jetbrainsmono_20.c
     src/fonts/lv_font_jetbrainsmono_24.c
     src/fonts/lv_font_jetbrainsmono_40.c
+    src/fonts/lv_font_montserrat_custom_24.c
     src/fonts/nerd_modifiers_28.c
-    src/fonts/lv_font_symbol_20.c
+    src/fonts/lv_font_symbol_16.c
 )
