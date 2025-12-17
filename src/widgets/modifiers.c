@@ -15,10 +15,12 @@ static struct zmk_widget_modifiers *global_widget = NULL;
 
 // 内部位置配置
 static const struct {
+    lv_align_t position;
     int16_t pos_x;
     int16_t pos_y;
 } widget_position = {
-    .pos_x = -20,
+    .position = LV_ALIGN_TOP_MID,
+    .pos_x = 0,
     .pos_y = 12
 };
 
@@ -31,79 +33,6 @@ static const char *mod_icons[MOD_COUNT] = {
     "",   // 4: GUI (macOS) System: Windows
     "󰘳",   // 5: GUI (默认) System: macOS
 };
-
-// 动画相关变量
-static lv_anim_t color_anim;
-static lv_obj_t *anim_label = NULL;
-static bool is_animating = false;
-
-typedef struct {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-} rgb_color_t;
-
-// 彩虹色关键点（使用RGB分量数组）
-static const rgb_color_t rainbow_colors[] = {
-    {255, 0, 0},     // 红色
-    {255, 127, 0},   // 橙色
-    {255, 255, 0},   // 黄色
-    {0, 255, 0},     // 绿色
-    {0, 255, 255},   // 青色
-    {0, 0, 255},     // 蓝色
-    {139, 0, 255},   // 紫色
-    {255, 0, 255},   // 品红
-    {255, 105, 180}, // 粉红
-    {255, 0, 0},     // 回到红色
-};
-
-// 线性插值颜色
-static lv_color_t lerp_color(const uint8_t r1, const uint8_t g1, const uint8_t b1,
-                            const uint8_t r2, const uint8_t g2, const uint8_t b2,
-                            uint16_t t, uint16_t max_t)
-{
-    if (t <= 0) return lv_color_make(r1, g1, b1);
-    if (t >= max_t) return lv_color_make(r2, g2, b2);
-    
-    uint8_t r = r1 + ((r2 - r1) * t) / max_t;
-    uint8_t g = g1 + ((g2 - g1) * t) / max_t;
-    uint8_t b = b1 + ((b2 - b1) * t) / max_t;
-    
-    return lv_color_make(r, g, b);
-}
-
-// 动画回调：平滑颜色过渡
-static void anim_smooth_color_cb(void *var, int32_t v)
-{
-    if (!var) return;
-    
-    // v值在0-1000之间变化，提供更精细的控制
-    int total_colors = sizeof(rainbow_colors) / sizeof(rainbow_colors[0]);
-    int total_segments = total_colors - 1;
-    int segment_length = 1000 / total_segments;
-    
-    int segment = v / segment_length;
-    int segment_pos = v % segment_length;
-    
-    if (segment >= total_segments) {
-        segment = total_segments - 1;
-        segment_pos = segment_length;
-    }
-    
-    // 获取当前段落的起始和结束颜色
-    const rgb_color_t *start = &rainbow_colors[segment];
-    const rgb_color_t *end = &rainbow_colors[segment + 1];
-    
-    // 线性插值计算当前颜色
-    lv_color_t current_color = lerp_color(
-        start->r, start->g, start->b,
-        end->r, end->g, end->b,
-        segment_pos, segment_length
-    );
-    
-    // 设置颜色
-    lv_obj_set_style_text_color(var, current_color, 0);
-}
 
 // 获取当前系统对应的图标
 static const char* get_system_icon(void)
@@ -119,60 +48,43 @@ static const char* get_system_icon(void)
     }
 }
 
-// 开始平滑彩虹动画
-static void start_smooth_rainbow_animation(lv_obj_t *parent)
+// 显示系统图标（当没有修饰键按下时）
+static void show_system_icon(lv_obj_t *parent)
 {
-    if (is_animating && anim_label) {
-        return;
+    // 创建或更新系统图标标签
+    static lv_obj_t *system_label = NULL;
+    
+    if (!system_label) {
+        system_label = lv_label_create(parent);
+        if (!system_label) {
+            return;
+        }
+        
+        // 设置系统图标
+        const char *system_icon = get_system_icon();
+        lv_label_set_text(system_label, system_icon);
+        
+        // 设置字体和颜色
+        lv_obj_set_style_text_font(system_label, &nerd_modifiers_28, 0);
+        lv_obj_set_style_text_color(system_label, lv_color_white(), 0);
+        
+        // 使用统一位置
+        lv_obj_align(system_label, widget_position.position, widget_position.pos_x, widget_position.pos_y);
+    } else {
+        // 更新系统图标
+        const char *system_icon = get_system_icon();
+        lv_label_set_text(system_label, system_icon);
+        lv_obj_clear_flag(system_label, LV_OBJ_FLAG_HIDDEN);
     }
-    
-    // 停止之前的动画
-    if (is_animating) {
-        lv_anim_del(anim_label, anim_smooth_color_cb);
-        lv_obj_del(anim_label);
-        anim_label = NULL;
-        is_animating = false;
-    }
-    
-    // 创建动画标签对象
-    anim_label = lv_label_create(parent);
-    if (!anim_label) {
-        return;
-    }
-    
-    // 设置系统图标
-    const char *system_icon = get_system_icon();
-    lv_label_set_text(anim_label, system_icon);
-    
-    // 设置字体
-    lv_obj_set_style_text_font(anim_label, &nerd_modifiers_28, 0);
-    
-    // 初始颜色（红色）
-    lv_obj_set_style_text_color(anim_label, lv_color_make(255, 0, 0), 0);
-    
-    // 使用统一位置
-    lv_obj_align(anim_label, LV_ALIGN_TOP_RIGHT, widget_position.pos_x, widget_position.pos_y);
-    
-    // 设置平滑彩虹动画
-    lv_anim_init(&color_anim);
-    lv_anim_set_var(&color_anim, anim_label);
-    lv_anim_set_exec_cb(&color_anim, anim_smooth_color_cb);
-    lv_anim_set_values(&color_anim, 0, 1000);  // 使用更大的范围实现更平滑的过渡
-    lv_anim_set_time(&color_anim, 4000);       // 4秒完成一次完整的彩虹循环
-    lv_anim_set_repeat_count(&color_anim, LV_ANIM_REPEAT_INFINITE);
-    lv_anim_start(&color_anim);
-    
-    is_animating = true;
 }
 
-// 停止动画
-static void stop_animation(void)
+// 隐藏系统图标
+static void hide_system_icon(void)
 {
-    if (is_animating && anim_label) {
-        lv_anim_del(anim_label, anim_smooth_color_cb);
-        lv_obj_del(anim_label);
-        anim_label = NULL;
-        is_animating = false;
+    static lv_obj_t *system_label = NULL;
+    
+    if (system_label) {
+        lv_obj_add_flag(system_label, LV_OBJ_FLAG_HIDDEN);
     }
 }
 
@@ -248,17 +160,17 @@ void zmk_widget_modifiers_update(struct zmk_widget_modifiers *widget)
         // 没有修饰键按下，清空顺序记录
         widget->order_count = 0;
         
-        // 隐藏标签
+        // 隐藏修饰键标签
         lv_obj_add_flag(widget->obj, LV_OBJ_FLAG_HIDDEN);
         
-        // 开始平滑彩虹动画
-        start_smooth_rainbow_animation(lv_obj_get_parent(widget->obj));
+        // 显示系统图标
+        show_system_icon(lv_obj_get_parent(widget->obj));
         
     } else {
-        // 停止动画
-        stop_animation();
+        // 隐藏系统图标
+        hide_system_icon();
         
-        // 显示标签
+        // 显示修饰键标签
         lv_obj_clear_flag(widget->obj, LV_OBJ_FLAG_HIDDEN);
         
         // 构建显示文本 - 按照按键顺序
@@ -305,7 +217,7 @@ void zmk_widget_modifiers_update(struct zmk_widget_modifiers *widget)
         lv_label_set_text(widget->obj, text);
         
         // 使用统一位置重新对齐
-        lv_obj_align(widget->obj, LV_ALIGN_TOP_RIGHT, widget_position.pos_x, widget_position.pos_y);
+        lv_obj_align(widget->obj, widget_position.position, widget_position.pos_x, widget_position.pos_y);
     }
 }
 
@@ -369,11 +281,10 @@ void zmk_widget_modifiers_refresh(void)
     if (global_widget) {
         zmk_widget_modifiers_update(global_widget);
         
-        // 如果当前正在显示动画，需要重启动画以使用新的系统图标
-        if (is_animating && anim_label) {
-            lv_obj_t *parent = lv_obj_get_parent(anim_label);
-            stop_animation();
-            start_smooth_rainbow_animation(parent);
+        // 如果当前正在显示系统图标，需要刷新系统图标
+        uint8_t current_mods = zmk_hid_get_keyboard_report()->body.modifiers;
+        if (current_mods == 0) {
+            show_system_icon(lv_obj_get_parent(global_widget->obj));
         }
     }
 }
