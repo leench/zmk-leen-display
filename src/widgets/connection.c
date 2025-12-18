@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
+LOG_MODULE_DECLARE(zmk_widget_connection, CONFIG_ZMK_LOG_LEVEL);
 
 #include <zmk/display.h>
 #include <zmk/event_manager.h>
@@ -21,41 +21,11 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 // 全局widget链表
 static sys_slist_t widgets = SYS_SLIST_STATIC_INIT(&widgets);
 
-// 呼吸动画回调函数
-static void anim_opa_cb(void *var, int32_t v) {
-    lv_obj_t *obj = (lv_obj_t *)var;
-    lv_obj_set_style_text_opa(obj, v, 0);
-}
-
-// 开始呼吸动画
-static void start_breath_animation(struct zmk_widget_connection *widget) {
-    if (widget->anim_running) {
-        lv_anim_del(&widget->anim, NULL);
-    }
-    
-    lv_anim_init(&widget->anim);
-    lv_anim_set_var(&widget->anim, widget->icon);
-    lv_anim_set_exec_cb(&widget->anim, anim_opa_cb);
-    lv_anim_set_values(&widget->anim, 100, 255); // 透明度从100到255
-    lv_anim_set_time(&widget->anim, 1500);       // 1.5秒周期
-    lv_anim_set_repeat_count(&widget->anim, LV_ANIM_REPEAT_INFINITE); // 无限重复
-    lv_anim_set_playback_time(&widget->anim, 1500); // 回放时间
-    lv_anim_set_playback_delay(&widget->anim, 0);
-    lv_anim_start(&widget->anim);
-    widget->anim_running = true;
-}
-
-// 停止呼吸动画
-static void stop_breath_animation(struct zmk_widget_connection *widget) {
-    if (widget->anim_running) {
-        lv_anim_del(&widget->anim, NULL);
-        lv_obj_set_style_text_opa(widget->icon, LV_OPA_COVER, 0);
-        widget->anim_running = false;
-    }
-}
-
 // 获取连接状态
 static struct connection_state get_connection_state(const zmk_event_t *_eh) {
+    // 获取当前选择的端点
+    struct zmk_endpoint_instance selected_endpoint = zmk_endpoints_selected();
+    
     bool usb_ready = zmk_usb_is_hid_ready();
     bool ble_connected = zmk_ble_active_profile_is_connected();
     bool ble_bonded = !zmk_ble_active_profile_is_open();
@@ -64,11 +34,15 @@ static struct connection_state get_connection_state(const zmk_event_t *_eh) {
     uint8_t status;
     uint8_t profile_num = 0;
     
-    if (usb_ready) {
-        // USB连接优先
+    // 根据选择的端点决定显示状态
+    switch (selected_endpoint.transport) {
+    case ZMK_TRANSPORT_USB:
+        // 选择了USB作为输出端点
         status = CONN_STATUS_USB;
-    } else {
-        // BLE模式
+        break;
+        
+    case ZMK_TRANSPORT_BLE:
+        // 选择了BLE作为输出端点
         profile_num = ble_profile_idx + 1; // 显示为1-4
         
         if (ble_connected) {
@@ -78,6 +52,24 @@ static struct connection_state get_connection_state(const zmk_event_t *_eh) {
         } else {
             status = CONN_STATUS_BLE_UNBONDED;
         }
+        break;
+        
+    default:
+        // 默认情况，根据实际连接状态显示
+        if (usb_ready) {
+            status = CONN_STATUS_USB;
+        } else {
+            profile_num = ble_profile_idx + 1;
+            
+            if (ble_connected) {
+                status = CONN_STATUS_BLE_CONNECTED;
+            } else if (ble_bonded) {
+                status = CONN_STATUS_BLE_BONDED;
+            } else {
+                status = CONN_STATUS_BLE_UNBONDED;
+            }
+        }
+        break;
     }
     
     return (struct connection_state){
@@ -108,7 +100,6 @@ int zmk_widget_connection_init(struct zmk_widget_connection *widget, lv_obj_t *p
 
     widget->status = 0;
     widget->profile = 0;
-    widget->anim_running = false;
 
     // 容器
     widget->obj = lv_obj_create(parent);
@@ -167,9 +158,6 @@ void zmk_widget_connection_update(struct zmk_widget_connection *widget,
     widget->status = state.status;
     widget->profile = state.profile_num;
     
-    // 停止之前的动画
-    stop_breath_animation(widget);
-    
     // 准备profile编号文本
     char profile_buf[8] = "";
     if (state.status >= CONN_STATUS_BLE_CONNECTED && 
@@ -194,7 +182,7 @@ void zmk_widget_connection_update(struct zmk_widget_connection *widget,
 
     case CONN_STATUS_BLE_CONNECTED:
         // BLE已连接 - 高亮蓝色
-        lv_label_set_text(widget->icon, LV_SYMBOL_BLUETOOTH);
+        lv_label_set_text(widget->icon, "\xEF\x8A\x94");
         lv_obj_set_style_text_color(widget->icon, lv_color_make(0, 150, 255), 0); // 高亮蓝色
         lv_label_set_text(widget->label, "BLE");
         lv_obj_set_style_text_color(widget->label, lv_color_make(0, 150, 255), 0);
@@ -203,21 +191,18 @@ void zmk_widget_connection_update(struct zmk_widget_connection *widget,
         break;
 
     case CONN_STATUS_BLE_BONDED:
-        // BLE已绑定但未连接 - 深蓝色并呼吸闪烁
-        lv_label_set_text(widget->icon, LV_SYMBOL_BLUETOOTH);
+        // BLE已绑定但未连接 - 深蓝色
+        lv_label_set_text(widget->icon, "\xEF\x8A\x94");
         lv_obj_set_style_text_color(widget->icon, lv_color_make(0, 0, 200), 0); // 深蓝色
         lv_label_set_text(widget->label, "BLE");
         lv_obj_set_style_text_color(widget->label, lv_color_make(0, 0, 200), 0);
         lv_label_set_text(widget->profile_num, profile_buf);
         lv_obj_set_style_text_color(widget->profile_num, lv_color_make(0, 0, 200), 0);
-        
-        // 开始呼吸动画
-        start_breath_animation(widget);
         break;
 
     case CONN_STATUS_BLE_UNBONDED:
         // BLE未绑定 - 红色
-        lv_label_set_text(widget->icon, LV_SYMBOL_BLUETOOTH);
+        lv_label_set_text(widget->icon, "\xEF\x8A\x94");
         lv_obj_set_style_text_color(widget->icon, lv_color_make(255, 0, 0), 0); // 红色
         lv_label_set_text(widget->label, "BLE");
         lv_obj_set_style_text_color(widget->label, lv_color_make(255, 0, 0), 0);
