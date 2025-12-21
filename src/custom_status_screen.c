@@ -8,8 +8,9 @@
 #include "widgets/battery.h"
 #include "widgets/layer.h"
 #include "widgets/connection.h"
-// #include "widgets/modifiers.h"
 #include "widgets/bongo_cat.h"
+#include "widgets/sysicon.h"
+#include "widgets/modifiers.h"
 
 LOG_MODULE_REGISTER(custom_status_screen, LOG_LEVEL_DBG);
 
@@ -27,8 +28,9 @@ static struct zmk_widget_volume volume_widget;
 static struct zmk_widget_battery battery_widget;
 static struct zmk_widget_layer layer_widget;
 static struct zmk_widget_connection connection_widget;
-// static struct zmk_widget_modifiers modifiers_widget;
 static struct zmk_widget_bongo_cat bongo_cat_widget;
+static struct zmk_widget_sysicon sysicon_widget;
+static struct zmk_widget_modifiers modifiers_widget;
 
 uint8_t system_type = 0;  // 定义并初始化为0（未设置） modifiers.h
 
@@ -65,8 +67,8 @@ static void hid_work_handler(struct k_work *work) {
                 system_type = buf[1];
                 LOG_DBG("System type updated: %d", system_type);
                 
-                // 主动刷新修饰键显示
-                // zmk_widget_modifiers_refresh();
+                // 更新系统图标显示（转换为枚举类型）
+                zmk_widget_sysicon_set_system(&sysicon_widget, (enum system_type)system_type);
             }
             break;
 
@@ -110,8 +112,13 @@ lv_obj_t *zmk_display_status_screen(void) {
     lv_obj_align(zmk_widget_bongo_cat_obj(&bongo_cat_widget), LV_ALIGN_TOP_RIGHT, -15, 12);
 
 
+    /* ---- 初始化 system icon Widget ---- */
+    zmk_widget_sysicon_init(&sysicon_widget, screen, &bongo_cat_widget);
+
+
     /* ---- 初始化 modifiers Widget ---- */
-    //zmk_widget_modifiers_init(&modifiers_widget, screen);
+    zmk_widget_modifiers_init(&modifiers_widget, screen);
+    lv_obj_align(zmk_widget_modifiers_obj(&modifiers_widget), LV_ALIGN_TOP_MID, 0, 10);
 
 
     /* ---- 初始化 Clock Widget ---- */

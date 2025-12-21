@@ -34,7 +34,10 @@ static void set_battery_display(uint8_t source, uint8_t level) {
     
     battery_ui_t *ui = &battery_uis[source];
     
-    if (!ui->bar || !ui->label) return;
+    if (!ui || !ui->bar || !ui->label || !lv_obj_is_valid(ui->bar) || !lv_obj_is_valid(ui->label)) {
+        LOG_WRN("电池 UI 对象无效，源: %d", source);
+        return;
+    }
     
     if (level == 0) {
         // 未连接状态：显示红色电池条
@@ -138,7 +141,16 @@ static void create_battery_ui(lv_obj_t *parent, int index) {
 }
 
 int zmk_widget_battery_bar_init(struct zmk_widget_battery *widget, lv_obj_t *parent) {
+    if (!widget) return -EINVAL;
+    
+    // 检查是否已初始化
+    if (widget->obj) {
+        LOG_WRN("电池 widget 已初始化");
+        return 0;
+    }
+    
     widget->obj = lv_obj_create(parent);
+    if (!widget->obj) return -ENOMEM;
     
     // 容器设置
     lv_obj_set_size(widget->obj, lv_pct(100), 46);
@@ -150,6 +162,16 @@ int zmk_widget_battery_bar_init(struct zmk_widget_battery *widget, lv_obj_t *par
     lv_obj_set_style_border_opa(widget->obj, LV_OPA_TRANSP, 0);
     lv_obj_set_style_pad_column(widget->obj, 12, 0);
     lv_obj_set_style_pad_hor(widget->obj, 16, 0);
+    
+    // 检查是否首次初始化
+    static bool first_init = true;
+    if (first_init) {
+        for (int i = 0; i < ZMK_SPLIT_BLE_PERIPHERAL_COUNT; i++) {
+            battery_uis[i].bar = NULL;
+            battery_uis[i].label = NULL;
+        }
+        first_init = false;
+    }
     
     // 创建电池UI
     for (int i = 0; i < ZMK_SPLIT_BLE_PERIPHERAL_COUNT; i++) {
@@ -182,4 +204,48 @@ void zmk_widget_battery_bar_set_connected(struct zmk_widget_battery *widget,
     if (!widget || !widget->obj || source >= ZMK_SPLIT_BLE_PERIPHERAL_COUNT) return;
     
     set_battery_display(source, connected ? 50 : 0);
+}
+
+void zmk_widget_battery_bar_destroy(struct zmk_widget_battery *widget) {
+    if (!widget) return;
+    
+    // 从全局链表中移除
+    struct zmk_widget_battery *prev = NULL;
+    struct zmk_widget_battery *curr;
+    
+    SYS_SLIST_FOR_EACH_CONTAINER(&widgets, curr, node) {
+        if (curr == widget) {
+            if (prev) {
+                sys_slist_remove(&widgets, &prev->node, &widget->node);
+            } else {
+                // 如果是第一个节点
+                sys_slist_t *head = &widgets;
+                sys_slist_remove(head, NULL, &widget->node);
+            }
+            break;
+        }
+        prev = curr;
+    }
+    
+    // 销毁 LVGL 对象
+    if (widget->obj) {
+        lv_obj_del(widget->obj);
+        widget->obj = NULL;
+    }
+    
+    // 清理 UI 对象引用（如果是最后一个 widget）
+    if (sys_slist_is_empty(&widgets)) {
+        for (int i = 0; i < ZMK_SPLIT_BLE_PERIPHERAL_COUNT; i++) {
+            battery_uis[i].bar = NULL;
+            battery_uis[i].label = NULL;
+        }
+    }
+}
+
+void zmk_widget_battery_bar_cleanup(void) {
+    struct zmk_widget_battery *widget, *tmp;
+    
+    SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&widgets, widget, tmp, node) {
+        zmk_widget_battery_bar_destroy(widget);
+    }
 }

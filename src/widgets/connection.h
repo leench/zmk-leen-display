@@ -5,10 +5,11 @@
 
 // 连接状态枚举
 enum conn_status {
-    CONN_STATUS_USB = 1,           // USB连接
-    CONN_STATUS_BLE_CONNECTED = 2,  // BLE已连接
-    CONN_STATUS_BLE_BONDED = 3,     // BLE已绑定但未连接
-    CONN_STATUS_BLE_UNBONDED = 4    // BLE未绑定
+    CONN_STATUS_USB_CONNECTED = 1,     // USB已连接
+    CONN_STATUS_USB_DISCONNECTED = 2,  // USB未连接
+    CONN_STATUS_BLE_CONNECTED = 3,     // BLE已连接
+    CONN_STATUS_BLE_BONDED = 4,        // BLE已绑定但未连接
+    CONN_STATUS_BLE_UNBONDED = 5       // BLE未绑定（等待配对）
 };
 
 struct connection_state {
@@ -23,8 +24,6 @@ struct zmk_widget_connection {
     lv_obj_t *profile_num;  // profile编号
     uint8_t status;         // 连接状态
     uint8_t profile;        // 当前profile编号
-    lv_anim_t anim;         // 呼吸动画
-    bool anim_running;      // 动画是否运行
     sys_snode_t node;       // 链表节点
 };
 

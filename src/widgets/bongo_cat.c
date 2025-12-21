@@ -90,33 +90,34 @@ struct bongo_cat_wpm_status_state {
     uint8_t wpm;
 };
 
-static enum anim_state current_anim_state = anim_state_none;
-
 /* ================= 炫彩动画 ================= */
-
-static lv_anim_t fast_color_anim;
 
 static void fast_color_anim_cb(void *obj, int32_t v) {
     lv_obj_t *o = (lv_obj_t*)obj;
+    if (!o || !lv_obj_is_valid(o)) return;
+    
     uint32_t idx = v % FAST_COLOR_COUNT;
     lv_obj_set_style_img_recolor(o, fast_colors[idx], 0);
     lv_obj_set_style_img_recolor_opa(o, LV_OPA_COVER, 0);
 }
 
-
 static void start_fast_color_anim(lv_obj_t *obj) {
+    if (!obj || !lv_obj_is_valid(obj)) return;
+    
     lv_anim_del(obj, fast_color_anim_cb);
 
-    lv_anim_init(&fast_color_anim);
-    lv_anim_set_var(&fast_color_anim, obj);
-    lv_anim_set_exec_cb(&fast_color_anim, fast_color_anim_cb);
-    lv_anim_set_values(&fast_color_anim, 0, FAST_COLOR_COUNT - 1); // ✔ 从0到数量-1
-    lv_anim_set_time(&fast_color_anim, 200);  // 每帧切换间隔
-    lv_anim_set_repeat_count(&fast_color_anim, LV_ANIM_REPEAT_INFINITE); // ✔ 无限循环
-    lv_anim_start(&fast_color_anim);
+    lv_anim_t anim;
+    lv_anim_init(&anim);
+    lv_anim_set_var(&anim, obj);
+    lv_anim_set_exec_cb(&anim, fast_color_anim_cb);
+    lv_anim_set_values(&anim, 0, FAST_COLOR_COUNT * 10 - 1); // 循环10次
+    lv_anim_set_time(&anim, 200 * FAST_COLOR_COUNT * 10); // 10次完整循环的时间
+    lv_anim_set_repeat_count(&anim, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_start(&anim);
 }
 
 static void stop_fast_color_anim(lv_obj_t *obj) {
+    if (!obj) return;
     lv_anim_del(obj, fast_color_anim_cb);
     lv_obj_set_style_img_recolor_opa(obj, LV_OPA_0, 0);
 }
@@ -125,49 +126,37 @@ static void stop_fast_color_anim(lv_obj_t *obj) {
 
 static void set_animation(lv_obj_t *anim_obj,
                           struct bongo_cat_wpm_status_state state) {
+    if (!anim_obj || !lv_obj_is_valid(anim_obj)) return;
 
-    /* 每次切换前清理炫彩 */
+    /* 停止当前动画 */
     stop_fast_color_anim(anim_obj);
 
     if (state.wpm < 5) {
-        if (current_anim_state != anim_state_idle) {
-            lv_animimg_set_src(anim_obj, SRC(idle_imgs));
-            lv_animimg_set_duration(anim_obj, ANIMATION_SPEED_IDLE);
-            lv_animimg_set_repeat_count(anim_obj, LV_ANIM_REPEAT_INFINITE);
-            lv_animimg_start(anim_obj);
-            current_anim_state = anim_state_idle;
-        }
+        lv_animimg_set_src(anim_obj, SRC(idle_imgs));
+        lv_animimg_set_duration(anim_obj, ANIMATION_SPEED_IDLE);
+        lv_animimg_set_repeat_count(anim_obj, LV_ANIM_REPEAT_INFINITE);
+        lv_animimg_start(anim_obj);
 
     } else if (state.wpm < 25) {
-        if (current_anim_state != anim_state_slow) {
-            lv_animimg_set_src(anim_obj, SRC(slow_imgs));
-            lv_animimg_set_duration(anim_obj, ANIMATION_SPEED_SLOW);
-            lv_animimg_set_repeat_count(anim_obj, LV_ANIM_REPEAT_INFINITE);
-            lv_animimg_start(anim_obj);
-            current_anim_state = anim_state_slow;
-        }
+        lv_animimg_set_src(anim_obj, SRC(slow_imgs));
+        lv_animimg_set_duration(anim_obj, ANIMATION_SPEED_SLOW);
+        lv_animimg_set_repeat_count(anim_obj, LV_ANIM_REPEAT_INFINITE);
+        lv_animimg_start(anim_obj);
 
     } else if (state.wpm < 50) {
-        if (current_anim_state != anim_state_mid) {
-            lv_animimg_set_src(anim_obj, SRC(mid_imgs));
-            lv_animimg_set_duration(anim_obj, ANIMATION_SPEED_MID);
-            lv_animimg_set_repeat_count(anim_obj, LV_ANIM_REPEAT_INFINITE);
-            lv_animimg_start(anim_obj);
-            current_anim_state = anim_state_mid;
-        }
+        lv_animimg_set_src(anim_obj, SRC(mid_imgs));
+        lv_animimg_set_duration(anim_obj, ANIMATION_SPEED_MID);
+        lv_animimg_set_repeat_count(anim_obj, LV_ANIM_REPEAT_INFINITE);
+        lv_animimg_start(anim_obj);
 
     } else {
-        if (current_anim_state != anim_state_fast) {
-            lv_animimg_set_src(anim_obj, SRC(fast_imgs));
-            lv_animimg_set_duration(anim_obj, ANIMATION_SPEED_FAST);
-            lv_animimg_set_repeat_count(anim_obj, LV_ANIM_REPEAT_INFINITE);
-            lv_animimg_start(anim_obj);
+        lv_animimg_set_src(anim_obj, SRC(fast_imgs));
+        lv_animimg_set_duration(anim_obj, ANIMATION_SPEED_FAST);
+        lv_animimg_set_repeat_count(anim_obj, LV_ANIM_REPEAT_INFINITE);
+        lv_animimg_start(anim_obj);
 
-            /* ⭐ FAST 启动炫彩 */
-            start_fast_color_anim(anim_obj);
-
-            current_anim_state = anim_state_fast;
-        }
+        /* FAST 模式启动炫彩动画 */
+        start_fast_color_anim(anim_obj);
     }
 }
 
@@ -176,13 +165,18 @@ static void set_animation(lv_obj_t *anim_obj,
 struct bongo_cat_wpm_status_state
 bongo_cat_wpm_status_get_state(const zmk_event_t *eh) {
     struct zmk_wpm_state_changed *ev = as_zmk_wpm_state_changed(eh);
+    if (!ev) {
+        return (struct bongo_cat_wpm_status_state){ .wpm = 0 };
+    }
     return (struct bongo_cat_wpm_status_state){ .wpm = ev->state };
 }
 
 void bongo_cat_wpm_status_update_cb(struct bongo_cat_wpm_status_state state) {
     struct zmk_widget_bongo_cat *widget;
     SYS_SLIST_FOR_EACH_CONTAINER(&widgets, widget, node) {
-        set_animation(widget->obj, state);
+        if (widget && widget->obj) {
+            set_animation(widget->obj, state);
+        }
     }
 }
 
@@ -199,12 +193,32 @@ ZMK_SUBSCRIPTION(widget_bongo_cat, zmk_wpm_state_changed);
 
 int zmk_widget_bongo_cat_init(struct zmk_widget_bongo_cat *widget,
                               lv_obj_t *parent) {
+    if (!widget || !parent) {
+        LOG_ERR("无效参数");
+        return -EINVAL;
+    }
+    
+    // 检查是否已初始化
+    if (widget->obj) {
+        LOG_WRN("bongo cat widget 已初始化");
+        return 0;
+    }
+    
     widget->obj = lv_animimg_create(parent);
+    if (!widget->obj) {
+        LOG_ERR("创建动画图像失败");
+        return -ENOMEM;
+    }
+    
     lv_obj_center(widget->obj);
-
+    
+    // 初始化为空闲状态
+    struct bongo_cat_wpm_status_state init_state = { .wpm = 0 };
+    set_animation(widget->obj, init_state);
+    
     sys_slist_append(&widgets, &widget->node);
     widget_bongo_cat_init();
-
+    
     return 0;
 }
 
@@ -214,6 +228,53 @@ lv_obj_t *zmk_widget_bongo_cat_obj(struct zmk_widget_bongo_cat *widget) {
 
 void zmk_widget_bongo_cat_set_wpm(struct zmk_widget_bongo_cat *widget,
                                   uint8_t wpm) {
+    if (!widget || !widget->obj || !lv_obj_is_valid(widget->obj)) {
+        LOG_WRN("无效的 widget 或对象");
+        return;
+    }
+    
     struct bongo_cat_wpm_status_state state = {.wpm = wpm};
     set_animation(widget->obj, state);
+}
+
+/* ================= 销毁函数 ================= */
+
+void zmk_widget_bongo_cat_destroy(struct zmk_widget_bongo_cat *widget) {
+    if (!widget) return;
+    
+    // 从全局链表中移除
+    struct zmk_widget_bongo_cat *prev = NULL;
+    struct zmk_widget_bongo_cat *curr;
+    
+    SYS_SLIST_FOR_EACH_CONTAINER(&widgets, curr, node) {
+        if (curr == widget) {
+            if (prev) {
+                sys_slist_remove(&widgets, &prev->node, &widget->node);
+            } else {
+                // 如果是第一个节点
+                sys_slist_t *head = &widgets;
+                sys_slist_remove(head, NULL, &widget->node);
+            }
+            break;
+        }
+        prev = curr;
+    }
+    
+    // 停止并销毁动画对象
+    if (widget->obj && lv_obj_is_valid(widget->obj)) {
+        // 不需要调用 lv_animimg_stop，直接删除对象即可
+        stop_fast_color_anim(widget->obj);
+        lv_obj_del(widget->obj);
+        widget->obj = NULL;
+    }
+}
+
+/* ================= 清理函数 ================= */
+
+void zmk_widget_bongo_cat_cleanup(void) {
+    struct zmk_widget_bongo_cat *widget, *tmp;
+    
+    SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&widgets, widget, tmp, node) {
+        zmk_widget_bongo_cat_destroy(widget);
+    }
 }

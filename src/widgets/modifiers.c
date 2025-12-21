@@ -13,89 +13,22 @@ LV_FONT_DECLARE(nerd_modifiers_28);
 // 全局widget引用
 static struct zmk_widget_modifiers *global_widget = NULL;
 
-// 内部位置配置
-static const struct {
-    lv_align_t position;
-    int16_t pos_x;
-    int16_t pos_y;
-} widget_position = {
-    .position = LV_ALIGN_TOP_MID,
-    .pos_x = 0,
-    .pos_y = 12
-};
-
 // 修饰键对应的图标
-static const char *mod_icons[MOD_COUNT] = {
-    "󰘴",  // 0: Ctrl
-    "󰘶",  // 1: Shift
-    "󰘵",  // 2: Alt
-    "󰌽",  // 3: GUI (Linux/Windows) System: Linux
-    "",   // 4: GUI (macOS) System: Windows
-    "󰘳",   // 5: GUI (默认) System: macOS
+static const char *mod_icons[] = {
+    "󰘴",  // Ctrl
+    "󰘶",  // Shift
+    "󰘵",  // Alt
+    "󰘳",  // GUI (通用图标)
 };
-
-// 获取当前系统对应的图标
-static const char* get_system_icon(void)
-{
-    if (system_type == 1) {
-        return mod_icons[4]; // Windows
-    } else if (system_type == 2) {
-        return mod_icons[3]; // Linux
-    } else if (system_type == 3) {
-        return mod_icons[5]; // macOS
-    } else {
-        return "-"; // 默认
-    }
-}
-
-// 显示系统图标（当没有修饰键按下时）
-static void show_system_icon(lv_obj_t *parent)
-{
-    // 创建或更新系统图标标签
-    static lv_obj_t *system_label = NULL;
-    
-    if (!system_label) {
-        system_label = lv_label_create(parent);
-        if (!system_label) {
-            return;
-        }
-        
-        // 设置系统图标
-        const char *system_icon = get_system_icon();
-        lv_label_set_text(system_label, system_icon);
-        
-        // 设置字体和颜色
-        lv_obj_set_style_text_font(system_label, &nerd_modifiers_28, 0);
-        lv_obj_set_style_text_color(system_label, lv_color_white(), 0);
-        
-        // 使用统一位置
-        lv_obj_align(system_label, widget_position.position, widget_position.pos_x, widget_position.pos_y);
-    } else {
-        // 更新系统图标
-        const char *system_icon = get_system_icon();
-        lv_label_set_text(system_label, system_icon);
-        lv_obj_clear_flag(system_label, LV_OBJ_FLAG_HIDDEN);
-    }
-}
-
-// 隐藏系统图标
-static void hide_system_icon(void)
-{
-    static lv_obj_t *system_label = NULL;
-    
-    if (system_label) {
-        lv_obj_add_flag(system_label, LV_OBJ_FLAG_HIDDEN);
-    }
-}
 
 // 简化版：检查修饰键变化并更新顺序
 static void update_simple_order(struct zmk_widget_modifiers *widget, uint8_t current_mods)
 {
     static const uint8_t mod_masks[4] = {
-        (MOD_LCTL | MOD_RCTL),  // 0: Ctrl
-        (MOD_LSFT | MOD_RSFT),  // 1: Shift
-        (MOD_LALT | MOD_RALT),  // 2: Alt
-        (MOD_LGUI | MOD_RGUI),  // 3: GUI
+        (MOD_LCTL | MOD_RCTL),  // Ctrl
+        (MOD_LSFT | MOD_RSFT),  // Shift
+        (MOD_LALT | MOD_RALT),  // Alt
+        (MOD_LGUI | MOD_RGUI),  // GUI
     };
     
     uint8_t last_mods = widget->last_mods;
@@ -135,6 +68,56 @@ static void update_simple_order(struct zmk_widget_modifiers *widget, uint8_t cur
     }
 }
 
+// 构建显示文本
+static void build_display_text(struct zmk_widget_modifiers *widget, uint8_t current_mods, char *text, size_t text_size)
+{
+    int idx = 0;
+    
+    if (widget->extend_left) {
+        // 向左延伸：先按的键在左边（正常顺序）
+        for (int i = 0; i < widget->order_count; i++) {
+            uint8_t mod_index = widget->mod_order[i];
+            
+            // 确保这个修饰键当前仍然按下
+            uint8_t mask = 0;
+            switch (mod_index) {
+                case 0: mask = (MOD_LCTL | MOD_RCTL); break;
+                case 1: mask = (MOD_LSFT | MOD_RSFT); break;
+                case 2: mask = (MOD_LALT | MOD_RALT); break;
+                case 3: mask = (MOD_LGUI | MOD_RGUI); break;
+            }
+            
+            if (current_mods & mask) {
+                const char *icon = mod_icons[mod_index];
+                if (icon) {
+                    idx += snprintf(&text[idx], text_size - idx, "%s", icon);
+                }
+            }
+        }
+    } else {
+        // 向右延伸：先按的键在右边（反向顺序）
+        for (int i = widget->order_count - 1; i >= 0; i--) {
+            uint8_t mod_index = widget->mod_order[i];
+            
+            // 确保这个修饰键当前仍然按下
+            uint8_t mask = 0;
+            switch (mod_index) {
+                case 0: mask = (MOD_LCTL | MOD_RCTL); break;
+                case 1: mask = (MOD_LSFT | MOD_RSFT); break;
+                case 2: mask = (MOD_LALT | MOD_RALT); break;
+                case 3: mask = (MOD_LGUI | MOD_RGUI); break;
+            }
+            
+            if (current_mods & mask) {
+                const char *icon = mod_icons[mod_index];
+                if (icon) {
+                    idx += snprintf(&text[idx], text_size - idx, "%s", icon);
+                }
+            }
+        }
+    }
+}
+
 // 更新修饰键显示
 void zmk_widget_modifiers_update(struct zmk_widget_modifiers *widget)
 {
@@ -162,63 +145,26 @@ void zmk_widget_modifiers_update(struct zmk_widget_modifiers *widget)
         
         // 隐藏修饰键标签
         lv_obj_add_flag(widget->obj, LV_OBJ_FLAG_HIDDEN);
-        
-        // 显示系统图标
-        show_system_icon(lv_obj_get_parent(widget->obj));
-        
     } else {
-        // 隐藏系统图标
-        hide_system_icon();
-        
         // 显示修饰键标签
         lv_obj_clear_flag(widget->obj, LV_OBJ_FLAG_HIDDEN);
         
-        // 构建显示文本 - 按照按键顺序
+        // 构建显示文本
         char text[32] = "";
-        int idx = 0;
-        
-        for (int i = 0; i < widget->order_count; i++) {
-            uint8_t mod_index = widget->mod_order[i];
-            
-            // 确保这个修饰键当前仍然按下
-            uint8_t mask = 0;
-            switch (mod_index) {
-                case 0: mask = (MOD_LCTL | MOD_RCTL); break;
-                case 1: mask = (MOD_LSFT | MOD_RSFT); break;
-                case 2: mask = (MOD_LALT | MOD_RALT); break;
-                case 3: mask = (MOD_LGUI | MOD_RGUI); break;
-            }
-            
-            if (current_mods & mask) {
-                const char *icon = NULL;
-                
-                if (mod_index == 3) { // GUI 图标根据系统类型选择
-                    // 根据系统类型动态选择图标
-                    if (system_type == 1) {
-                        icon = mod_icons[3]; // Windows
-                    } else if (system_type == 2) {
-                        icon = mod_icons[3]; // Linux (使用与Windows相同的图标)
-                    } else if (system_type == 3) {
-                        icon = mod_icons[4]; // macOS
-                    } else {
-                        icon = mod_icons[5]; // 默认
-                    }
-                } else if (mod_index < 3) {
-                    icon = mod_icons[mod_index];
-                }
-                
-                if (icon) {
-                    idx += snprintf(&text[idx], sizeof(text) - idx, "%s", icon);
-                }
-            }
-        }
+        build_display_text(widget, current_mods, text, sizeof(text));
         
         // 更新标签文本
         lv_label_set_text(widget->obj, text);
-        
-        // 使用统一位置重新对齐
-        lv_obj_align(widget->obj, widget_position.position, widget_position.pos_x, widget_position.pos_y);
     }
+}
+
+// 设置排列方向
+void zmk_widget_modifiers_set_direction(struct zmk_widget_modifiers *widget, bool extend_left)
+{
+    if (!widget) return;
+    
+    widget->extend_left = extend_left;
+    LOG_DBG("Modifiers direction set to: %s", extend_left ? "LEFT" : "RIGHT");
 }
 
 // 定时器回调函数
@@ -232,7 +178,7 @@ static struct k_timer modifiers_timer;
 
 int zmk_widget_modifiers_init(struct zmk_widget_modifiers *widget, lv_obj_t *parent)
 {
-    if (!widget) {
+    if (!widget || !parent) {
         return -EINVAL;
     }
     
@@ -241,6 +187,7 @@ int zmk_widget_modifiers_init(struct zmk_widget_modifiers *widget, lv_obj_t *par
     
     // 初始化结构体
     memset(widget, 0, sizeof(struct zmk_widget_modifiers));
+    widget->extend_left = true;  // 默认向左延伸
     
     // 设置初始值为一个不可能的值，确保第一次更新会执行
     widget->last_mods = 0xFF;
@@ -258,11 +205,7 @@ int zmk_widget_modifiers_init(struct zmk_widget_modifiers *widget, lv_obj_t *par
     lv_obj_set_style_text_font(widget->obj, &nerd_modifiers_28, 0);
     lv_obj_set_style_text_color(widget->obj, lv_color_white(), 0);
     
-    // 设置文本对齐方式
-    lv_obj_set_style_text_align(widget->obj, LV_TEXT_ALIGN_RIGHT, 0);
-    
-    // 使用统一位置
-    lv_obj_align(widget->obj, LV_ALIGN_TOP_RIGHT, widget_position.pos_x, widget_position.pos_y);
+    // 注意：不在 init 函数中设置任何位置
     
     // 初始化定时器
     k_timer_init(&modifiers_timer, modifiers_timer_cb, NULL);
@@ -273,20 +216,6 @@ int zmk_widget_modifiers_init(struct zmk_widget_modifiers *widget, lv_obj_t *par
     zmk_widget_modifiers_update(widget);
     
     return 0;
-}
-
-// 添加刷新函数
-void zmk_widget_modifiers_refresh(void)
-{
-    if (global_widget) {
-        zmk_widget_modifiers_update(global_widget);
-        
-        // 如果当前正在显示系统图标，需要刷新系统图标
-        uint8_t current_mods = zmk_hid_get_keyboard_report()->body.modifiers;
-        if (current_mods == 0) {
-            show_system_icon(lv_obj_get_parent(global_widget->obj));
-        }
-    }
 }
 
 lv_obj_t *zmk_widget_modifiers_obj(struct zmk_widget_modifiers *widget)

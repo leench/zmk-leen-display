@@ -8,14 +8,17 @@ zephyr_library_sources(
     src/custom_status_screen.c
     src/display_rotate_init.c
     src/raw_hid_bridge.c
+    src/brightness.c
+
     src/widgets/clock.c
     src/widgets/volume.c
     src/widgets/battery.c
     src/widgets/layer.c
     src/widgets/connection.c
-    src/widgets/modifiers.c
     src/widgets/bongo_cat.c
     src/widgets/bongo_cat_images_inverted.c
+    src/widgets/sysicon.c
+    src/widgets/modifiers.c
 )
 
 target_sources(app PRIVATE
