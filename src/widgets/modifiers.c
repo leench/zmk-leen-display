@@ -13,13 +13,45 @@ LV_FONT_DECLARE(nerd_modifiers_28);
 // 全局widget引用
 static struct zmk_widget_modifiers *global_widget = NULL;
 
-// 修饰键对应的图标
+// 系统类型（默认为未知）
+static enum system_type current_system = SYS_UNKNOWN;
+
+// 修饰键对应的图标（Ctrl, Shift, Alt）
 static const char *mod_icons[] = {
     "󰘴",  // Ctrl
     "󰘶",  // Shift
     "󰘵",  // Alt
-    "󰘳",  // GUI (通用图标)
 };
+
+// GUI键图标（根据系统类型）
+static const char *gui_icons[] = {
+    "󰘳",  // SYS_UNKNOWN - 默认通用图标
+    "",  // SYS_WINDOWS - Windows图标
+    "󰘳",  // SYS_LINUX - Linux通用图标
+    "󰘳",  // SYS_MACOS - macOS通用图标（可以改为苹果图标）
+};
+
+// 设置系统类型
+void zmk_widget_modifiers_set_system_type(enum system_type type)
+{
+    if (type < SYS_UNKNOWN || type > SYS_MACOS) {
+        type = SYS_UNKNOWN;
+    }
+    
+    current_system = type;
+    LOG_DBG("Modifiers system type set to: %d", type);
+    
+    // 如果widget已初始化，立即更新显示
+    if (global_widget && global_widget->obj) {
+        zmk_widget_modifiers_update(global_widget);
+    }
+}
+
+// 获取GUI图标（根据系统类型）
+static const char *get_gui_icon(void)
+{
+    return gui_icons[current_system];
+}
 
 // 简化版：检查修饰键变化并更新顺序
 static void update_simple_order(struct zmk_widget_modifiers *widget, uint8_t current_mods)
@@ -88,7 +120,14 @@ static void build_display_text(struct zmk_widget_modifiers *widget, uint8_t curr
             }
             
             if (current_mods & mask) {
-                const char *icon = mod_icons[mod_index];
+                const char *icon = NULL;
+                if (mod_index == 3) {
+                    // GUI键，根据系统类型选择图标
+                    icon = get_gui_icon();
+                } else {
+                    icon = mod_icons[mod_index];
+                }
+                
                 if (icon) {
                     idx += snprintf(&text[idx], text_size - idx, "%s", icon);
                 }
@@ -109,7 +148,14 @@ static void build_display_text(struct zmk_widget_modifiers *widget, uint8_t curr
             }
             
             if (current_mods & mask) {
-                const char *icon = mod_icons[mod_index];
+                const char *icon = NULL;
+                if (mod_index == 3) {
+                    // GUI键，根据系统类型选择图标
+                    icon = get_gui_icon();
+                } else {
+                    icon = mod_icons[mod_index];
+                }
+                
                 if (icon) {
                     idx += snprintf(&text[idx], text_size - idx, "%s", icon);
                 }

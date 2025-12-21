@@ -1,6 +1,7 @@
 #pragma once
 #include <lvgl.h>
 #include <zmk/hid.h>
+#include "sysicon.h"
 
 #define MOD_COUNT 4
 #define MAX_MOD_ORDER 4  // 最多记录4个修饰键的顺序
@@ -12,6 +13,9 @@ struct zmk_widget_modifiers {
     uint8_t order_count;         // 当前顺序记录数量
     bool extend_left;            // 排列方向：true=向左延伸，false=向右延伸
 };
+
+// 设置系统类型的函数
+void zmk_widget_modifiers_set_system_type(enum system_type type);
 
 /**
  * @brief 初始化修饰键组件

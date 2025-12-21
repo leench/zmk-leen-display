@@ -67,7 +67,7 @@ int zmk_widget_clock_init(struct zmk_widget_clock *widget, lv_obj_t *parent) {
     
     lv_label_set_text(widget->label_sec, "00");
     lv_obj_set_style_text_font(widget->label_sec, &lv_font_jetbrainsmono_24, 0);
-    lv_obj_set_style_text_color(widget->label_sec, lv_color_make(150, 150, 180), 0);
+    lv_obj_set_style_text_color(widget->label_sec, lv_color_make(155, 155, 225), 0);
     lv_obj_set_size(widget->label_sec, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
 
     /* 秒数相对于 HH:MM 右下对齐 */

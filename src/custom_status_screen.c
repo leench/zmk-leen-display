@@ -32,7 +32,7 @@ static struct zmk_widget_bongo_cat bongo_cat_widget;
 static struct zmk_widget_sysicon sysicon_widget;
 static struct zmk_widget_modifiers modifiers_widget;
 
-uint8_t system_type = 0;  // 定义并初始化为0（未设置） modifiers.h
+uint8_t system_type = 0;  // 定义并初始化为0（未设置） sysicon.h
 
 
 /* ============================
@@ -69,6 +69,9 @@ static void hid_work_handler(struct k_work *work) {
                 
                 // 更新系统图标显示（转换为枚举类型）
                 zmk_widget_sysicon_set_system(&sysicon_widget, (enum system_type)system_type);
+
+                // 更新修饰键widget的系统类型
+                zmk_widget_modifiers_set_system_type((enum system_type)system_type);
             }
             break;
 

@@ -22,11 +22,11 @@ LOG_MODULE_DECLARE(zmk_widget_connection, CONFIG_ZMK_LOG_LEVEL);
 static sys_slist_t widgets = SYS_SLIST_STATIC_INIT(&widgets);
 static bool listener_initialized = false;
 
-// 获取连接状态 - 修正逻辑
+// 获取连接状态 - 严格按照transport类型处理
 static struct connection_state get_connection_state(const zmk_event_t *_eh) {
     struct zmk_endpoint_instance selected_endpoint = zmk_endpoints_selected();
     uint8_t ble_profile_idx = zmk_ble_active_profile_index();
-    uint8_t status;
+    uint8_t status = CONN_STATUS_USB_DISCONNECTED; // 默认值
     uint8_t profile_num = 0;
     
     // 根据选择的端点决定显示状态
@@ -45,7 +45,7 @@ static struct connection_state get_connection_state(const zmk_event_t *_eh) {
     case ZMK_TRANSPORT_BLE:
         profile_num = ble_profile_idx + 1; // 显示为1-4
         
-        // BLE状态判断（与output_status.c一致）
+        // BLE状态判断
         if (zmk_ble_active_profile_is_connected()) {
             // 已连接
             status = CONN_STATUS_BLE_CONNECTED;
@@ -55,17 +55,6 @@ static struct connection_state get_connection_state(const zmk_event_t *_eh) {
         } else {
             // 未绑定（等待配对）
             status = CONN_STATUS_BLE_UNBONDED;
-        }
-        break;
-        
-    default:
-        // 默认显示USB状态
-        profile_num = 0;
-        
-        if (zmk_usb_is_hid_ready()) {
-            status = CONN_STATUS_USB_CONNECTED;
-        } else {
-            status = CONN_STATUS_USB_DISCONNECTED;
         }
         break;
     }

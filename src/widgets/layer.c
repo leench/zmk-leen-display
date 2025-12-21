@@ -94,7 +94,7 @@ int zmk_widget_layer_init(
     lv_label_set_text(widget->label, layer_name(current_layer));
 
     // 样式设置
-    lv_obj_set_style_text_color(widget->label, lv_color_make(200, 200, 200), 0);
+    lv_obj_set_style_text_color(widget->label, lv_color_make(210, 210, 210), 0);
     lv_obj_set_style_text_font(widget->label, &lv_font_montserrat_custom_24, 0);
     //lv_obj_set_style_text_font(widget->label, &lv_font_jetbrainsmono_24, 0);
 
