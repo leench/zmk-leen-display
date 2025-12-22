@@ -40,6 +40,23 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #error "DONGLE_SCREEN_AMBIENT_LIGHT_MIN_RAW_VALUE can't be greater than DONGLE_SCREEN_AMBIENT_LIGHT_MAX_RAW_VALUE when DONGLE_SCREEN_AMBIENT_LIGHT is activated!"
 #endif
 
+// 检查调暗时间是否合法
+#if defined(CONFIG_DONGLE_SCREEN_IDLE_DIM_TIMEOUT_S)
+    #if CONFIG_DONGLE_SCREEN_IDLE_DIM_TIMEOUT_S >= CONFIG_DONGLE_SCREEN_IDLE_TIMEOUT_S
+    #error "DIM_TIMEOUT 必须小于 IDLE_TIMEOUT，否则逻辑冲突！"
+    #endif
+#endif
+
+// 状态追踪：记录当前屏幕是否处于调暗状态
+#if defined(CONFIG_DONGLE_SCREEN_IDLE_DIM_TIMEOUT_S)
+static bool is_dimmed = false;
+#endif
+
+// 安全检查
+#if CONFIG_DONGLE_SCREEN_IDLE_DIM_TIMEOUT_S >= CONFIG_DONGLE_SCREEN_IDLE_TIMEOUT_S
+#error "Dim timeout must be LESS than idle timeout!"
+#endif
+
 #define BRIGHTNESS_STEP 1
 #define BRIGHTNESS_DELAY_MS 2
 #define BRIGHTNESS_FADE_DURATION_MS 500
@@ -348,29 +365,63 @@ void screen_idle_thread(void)
 {
     while (1)
     {
-        // Thread should run even if the screen is off, but only if the screen is off through the modifier
         if (screen_on || (!screen_on && off_through_modifier))
         {
             int64_t now = k_uptime_get();
-            int64_t elapsed = now - last_activity;
-            int64_t remaining = SCREEN_IDLE_TIMEOUT_MS - elapsed;
+            int64_t elapsed_ms = now - last_activity;
+            int64_t off_timeout_ms = (int64_t)CONFIG_DONGLE_SCREEN_IDLE_TIMEOUT_S * 1000;
 
-            if (remaining <= 0)
-            {
+#if defined(CONFIG_DONGLE_SCREEN_IDLE_DIM_TIMEOUT_S) && (CONFIG_DONGLE_SCREEN_IDLE_DIM_TIMEOUT_S > 0)
+            int64_t dim_timeout_ms = (int64_t)CONFIG_DONGLE_SCREEN_IDLE_DIM_TIMEOUT_S * 1000;
+
+            if (elapsed_ms >= off_timeout_ms) {
+                // 状态：全长超时 -> 关屏
                 screen_set_on(false);
-                off_through_modifier = false; // Reset the flag, because the screen is turned off
-                // After turning off, sleep until next activity (key event will wake screen)
+                is_dimmed = false;
                 k_sleep(K_FOREVER);
+            } 
+            else if (elapsed_ms >= dim_timeout_ms) {
+                // 状态：进入调暗期
+                if (!is_dimmed) {
+                    // 计算全亮值（用于渐变起点）
+                    struct brightness_result res = calculate_brightness_with_bounds(current_brightness, brightness_modifier, true);
+                    
+                    uint8_t dim_val = 10;
+                    #ifdef CONFIG_DONGLE_SCREEN_IDLE_DIM_BRIGHTNESS
+                        dim_val = CONFIG_DONGLE_SCREEN_IDLE_DIM_BRIGHTNESS;
+                    #endif
+
+                    fade_to_brightness(res.effective_brightness, dim_val);
+                    is_dimmed = true;
+                    LOG_INF("Idle: Dimming to %d", dim_val);
+                }
+                k_sleep(K_MSEC(off_timeout_ms - elapsed_ms));
+            } 
+            else {
+                // 状态：活跃期/唤醒恢复
+                if (is_dimmed) {
+                    // 计算当前应有的全亮值
+                    struct brightness_result res = calculate_brightness_with_bounds(current_brightness, brightness_modifier, true);
+                    
+                    // 从当前的暗度恢复到计算出的有效全亮度
+                    // 注意：此时 current_brightness 可能已经被渐变线程更新为较小的值
+                    fade_to_brightness(current_brightness, res.effective_brightness);
+                    is_dimmed = false;
+                    LOG_INF("Activity: Restoring to %d", res.effective_brightness);
+                }
+                k_sleep(K_MSEC(dim_timeout_ms - elapsed_ms));
             }
-            else
-            {
-                // Sleep exactly as long as needed until timeout or next key event
-                k_sleep(K_MSEC(remaining));
+#else
+            // --- 原始逻辑：无调暗功能 ---
+            if (elapsed_ms >= off_timeout_ms) {
+                screen_set_on(false);
+                k_sleep(K_FOREVER);
+            } else {
+                k_sleep(K_MSEC(off_timeout_ms - elapsed_ms));
             }
+#endif
         }
-        else
-        {
-            // If Screen is off, sleep forever (will be interrupted by key event)
+        else {
             k_sleep(K_FOREVER);
         }
     }

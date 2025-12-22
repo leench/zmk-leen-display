@@ -61,6 +61,30 @@ config PWM
 config LED
     default y
 
+config DONGLE_SCREEN_IDLE_TIMEOUT_S
+    int "Screen Idle Timeout (Seconds)"
+    default 600
+    help
+      The number of seconds of inactivity before the screen turns off completely to save power.
+      Set to 0 to disable automatic screen off.
+
+config DONGLE_SCREEN_IDLE_DIM_TIMEOUT_S
+    int "Screen Idle Dim Timeout (Seconds)"
+    default 300
+    help
+      The number of seconds of inactivity before the screen brightness is reduced (dimmed).
+      This value must be less than DONGLE_SCREEN_IDLE_TIMEOUT_S. 
+      Set to 0 or leave undefined to disable the dimming stage.
+
+config DONGLE_SCREEN_IDLE_DIM_BRIGHTNESS
+    int "Screen Idle Dim Brightness (0-100)"
+    default 10
+    range 0 100
+    depends on DONGLE_SCREEN_IDLE_DIM_TIMEOUT_S > 0
+    help
+      The specific brightness level (0 to 100) the screen will fade to when 
+      DONGLE_SCREEN_IDLE_DIM_TIMEOUT_S is reached.
+
 config DONGLE_SCREEN_MAX_BRIGHTNESS
     int "Maximum screen brightness (1-100)"
     default 80
