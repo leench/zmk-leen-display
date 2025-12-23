@@ -2,7 +2,7 @@ zephyr_library()
 
 zephyr_include_directories(include)
 
-if(CONFIG_ZMK_DISPLAY)
+if(CONFIG_ZMK_DISPLAY_STATUS_SCREEN_CUSTOM)
   # ===== 核心源文件 =====
   zephyr_library_sources(
       src/custom_status_screen.c
