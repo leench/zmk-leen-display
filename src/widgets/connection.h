@@ -2,6 +2,7 @@
 
 #include <lvgl.h>
 #include <zephyr/kernel.h>
+#include <zmk/ble.h>
 
 // 连接状态枚举
 enum conn_status {
@@ -19,13 +20,19 @@ struct connection_state {
 
 struct zmk_widget_connection {
     lv_obj_t *obj;
-    lv_obj_t *icon;         // 图标对象
-    lv_obj_t *label;        // 文字对象
-    lv_obj_t *profile_num;  // profile编号
-    uint8_t status;         // 连接状态
-    uint8_t profile;        // 当前profile编号
-    sys_snode_t node;       // 链表节点
+    lv_obj_t *icon;
+    lv_obj_t *label;
+    lv_obj_t *profile_num;
+    lv_obj_t *indicators_container;      // 指示器容器
+    lv_obj_t *slider_bg;                 // 滑块背景
+    lv_obj_t *profile_dots[ZMK_BLE_PROFILE_COUNT]; // profile圆点数组
+    uint8_t status;
+    uint8_t profile;
+    sys_snode_t node;
 };
+
+// 更新profile绑定状态函数声明：
+void zmk_widget_connection_update_bonding(struct zmk_widget_connection *widget, int profile_idx, bool bonded);
 
 // 初始化控件
 int zmk_widget_connection_init(struct zmk_widget_connection *widget, lv_obj_t *parent);

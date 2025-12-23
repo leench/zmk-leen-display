@@ -363,6 +363,15 @@ static void screen_set_on(bool on)
 
 void screen_idle_thread(void)
 {
+    enum {
+        STATE_ACTIVE,      // 活跃状态
+        STATE_DIMMED,      // 调暗状态
+        STATE_OFF          // 关屏状态
+    } state = STATE_ACTIVE;
+    
+    static uint8_t original_effective_brightness = 0;
+    static uint8_t original_base_brightness = 0;  // 新增：保存原始基础亮度
+
     while (1)
     {
         if (screen_on || (!screen_on && off_through_modifier))
@@ -374,50 +383,83 @@ void screen_idle_thread(void)
 #if defined(CONFIG_DONGLE_SCREEN_IDLE_DIM_TIMEOUT_S) && (CONFIG_DONGLE_SCREEN_IDLE_DIM_TIMEOUT_S > 0)
             int64_t dim_timeout_ms = (int64_t)CONFIG_DONGLE_SCREEN_IDLE_DIM_TIMEOUT_S * 1000;
 
+            // 根据时间判断应该处于什么状态
             if (elapsed_ms >= off_timeout_ms) {
-                // 状态：全长超时 -> 关屏
-                screen_set_on(false);
-                is_dimmed = false;
+                // 应该关屏
+                if (state != STATE_OFF) {
+                    screen_set_on(false);
+                    state = STATE_OFF;
+                    is_dimmed = false;
+                }
                 k_sleep(K_FOREVER);
             } 
             else if (elapsed_ms >= dim_timeout_ms) {
-                // 状态：进入调暗期
-                if (!is_dimmed) {
-                    // 计算全亮值（用于渐变起点）
-                    struct brightness_result res = calculate_brightness_with_bounds(current_brightness, brightness_modifier, true);
+                // 应该调暗
+                if (state == STATE_ACTIVE) {
+                    // 保存原始值
+                    original_base_brightness = current_brightness;  // 保存基础亮度
+                    original_effective_brightness = clamp_brightness(current_brightness + brightness_modifier);
                     
-                    uint8_t dim_val = 10;
-                    #ifdef CONFIG_DONGLE_SCREEN_IDLE_DIM_BRIGHTNESS
-                        dim_val = CONFIG_DONGLE_SCREEN_IDLE_DIM_BRIGHTNESS;
-                    #endif
-
-                    fade_to_brightness(res.effective_brightness, dim_val);
+                    // 使用固定暗度值
+                    uint8_t dim_val = 20;  // 固定暗度值
+                    
+                    fade_to_brightness(original_effective_brightness, dim_val);
+                    state = STATE_DIMMED;
                     is_dimmed = true;
-                    LOG_INF("Idle: Dimming to %d", dim_val);
+                    LOG_INF("Idle: Dimming from %d to %d", original_effective_brightness, dim_val);
                 }
-                k_sleep(K_MSEC(off_timeout_ms - elapsed_ms));
+                
+                k_sleep(K_MSEC(100));
             } 
             else {
-                // 状态：活跃期/唤醒恢复
-                if (is_dimmed) {
-                    // 计算当前应有的全亮值
-                    struct brightness_result res = calculate_brightness_with_bounds(current_brightness, brightness_modifier, true);
+                // 应该活跃
+                if (state == STATE_DIMMED) {
+                    // 从调暗恢复到活跃
+                    // 恢复原始基础亮度
+                    current_brightness = original_base_brightness;
                     
-                    // 从当前的暗度恢复到计算出的有效全亮度
-                    // 注意：此时 current_brightness 可能已经被渐变线程更新为较小的值
-                    fade_to_brightness(current_brightness, res.effective_brightness);
+                    // 重新计算有效亮度
+                    uint8_t target_effective = clamp_brightness(current_brightness + brightness_modifier);
+                    
+                    // 从当前暗度渐变到目标亮度
+                    uint8_t dim_val = 20;  // 与调暗时相同的固定值
+                    fade_to_brightness(dim_val, target_effective);
+                    
+                    state = STATE_ACTIVE;
                     is_dimmed = false;
-                    LOG_INF("Activity: Restoring to %d", res.effective_brightness);
+                    LOG_INF("Activity: Restoring from %d to %d", dim_val, target_effective);
+                } else if (state == STATE_OFF) {
+                    // 从关屏恢复到活跃
+                    screen_set_on(true);
+                    state = STATE_ACTIVE;
+                    is_dimmed = false;
+                    // 更新原始亮度值
+                    original_effective_brightness = clamp_brightness(current_brightness + brightness_modifier);
+                    original_base_brightness = current_brightness;
                 }
-                k_sleep(K_MSEC(dim_timeout_ms - elapsed_ms));
+                
+                int64_t sleep_time = dim_timeout_ms - elapsed_ms;
+                if (sleep_time > 100) {
+                    k_sleep(K_MSEC(100));
+                } else if (sleep_time > 0) {
+                    k_sleep(K_MSEC(sleep_time));
+                } else {
+                    k_sleep(K_MSEC(10));
+                }
             }
 #else
-            // --- 原始逻辑：无调暗功能 ---
             if (elapsed_ms >= off_timeout_ms) {
                 screen_set_on(false);
                 k_sleep(K_FOREVER);
             } else {
-                k_sleep(K_MSEC(off_timeout_ms - elapsed_ms));
+                int64_t sleep_time = off_timeout_ms - elapsed_ms;
+                if (sleep_time > 100) {
+                    k_sleep(K_MSEC(100));
+                } else if (sleep_time > 0) {
+                    k_sleep(K_MSEC(sleep_time));
+                } else {
+                    k_sleep(K_MSEC(10));
+                }
             }
 #endif
         }
@@ -426,6 +468,7 @@ void screen_idle_thread(void)
         }
     }
 }
+
 
 K_THREAD_DEFINE(screen_idle_tid, 512, screen_idle_thread, NULL, NULL, NULL, 7, 0, 0);
 

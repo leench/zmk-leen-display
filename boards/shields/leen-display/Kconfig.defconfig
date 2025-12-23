@@ -63,14 +63,14 @@ config LED
 
 config DONGLE_SCREEN_IDLE_TIMEOUT_S
     int "Screen Idle Timeout (Seconds)"
-    default 600
+    default 180
     help
       The number of seconds of inactivity before the screen turns off completely to save power.
       Set to 0 to disable automatic screen off.
 
 config DONGLE_SCREEN_IDLE_DIM_TIMEOUT_S
     int "Screen Idle Dim Timeout (Seconds)"
-    default 300
+    default 120
     help
       The number of seconds of inactivity before the screen brightness is reduced (dimmed).
       This value must be less than DONGLE_SCREEN_IDLE_TIMEOUT_S. 

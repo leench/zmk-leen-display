@@ -17,7 +17,7 @@ LOG_MODULE_REGISTER(custom_status_screen, LOG_LEVEL_DBG);
 #define HID_UPDATE_PERIOD_MS 50  // 每50ms更新一次
 
 // 同步阈值（秒），当 HID 时间与本地时间差 <= 该值时不进行同步
-#define CLOCK_SYNC_THRESHOLD_S 2
+#define CLOCK_SYNC_THRESHOLD_S 30
 
 static struct k_timer hid_timer;
 static struct k_work hid_work;
@@ -107,7 +107,7 @@ lv_obj_t *zmk_display_status_screen(void) {
 
     /* ---- 初始化 Connection Widget ---- */
     zmk_widget_connection_init(&connection_widget, screen);
-    lv_obj_align(zmk_widget_connection_obj(&connection_widget), LV_ALIGN_TOP_LEFT, 15, 12);
+    lv_obj_align(zmk_widget_connection_obj(&connection_widget), LV_ALIGN_TOP_LEFT, 8, 12);
 
 
     /* ---- 初始化 bonge cat Widget ---- */

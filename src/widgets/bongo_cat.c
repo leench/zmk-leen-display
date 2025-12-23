@@ -137,13 +137,13 @@ static void set_animation(lv_obj_t *anim_obj,
         lv_animimg_set_repeat_count(anim_obj, LV_ANIM_REPEAT_INFINITE);
         lv_animimg_start(anim_obj);
 
-    } else if (state.wpm < 25) {
+    } else if (state.wpm < 30) {
         lv_animimg_set_src(anim_obj, SRC(slow_imgs));
         lv_animimg_set_duration(anim_obj, ANIMATION_SPEED_SLOW);
         lv_animimg_set_repeat_count(anim_obj, LV_ANIM_REPEAT_INFINITE);
         lv_animimg_start(anim_obj);
 
-    } else if (state.wpm < 50) {
+    } else if (state.wpm < 75) {
         lv_animimg_set_src(anim_obj, SRC(mid_imgs));
         lv_animimg_set_duration(anim_obj, ANIMATION_SPEED_MID);
         lv_animimg_set_repeat_count(anim_obj, LV_ANIM_REPEAT_INFINITE);
