@@ -1,9 +1,8 @@
 zephyr_library()
+
 zephyr_include_directories(include)
 
-add_subdirectory(${ZEPHYR_CURRENT_MODULE_DIR}/drivers/display)
-add_subdirectory(${ZEPHYR_CURRENT_MODULE_DIR}/modules/lvgl)
-
+# ===== 核心源文件 =====
 zephyr_library_sources(
     src/custom_status_screen.c
     src/display_rotate_init.c
@@ -21,7 +20,8 @@ zephyr_library_sources(
     src/widgets/modifiers.c
 )
 
-target_sources(app PRIVATE
+# ===== 字体文件：必须也进 zephyr_library，不要碰 app =====
+zephyr_library_sources(
     src/fonts/lv_font_jetbrainsmono_16.c
     src/fonts/lv_font_jetbrainsmono_20.c
     src/fonts/lv_font_jetbrainsmono_24.c
@@ -30,3 +30,13 @@ target_sources(app PRIVATE
     src/fonts/nerd_modifiers_28.c
     src/fonts/lv_font_symbol_16.c
 )
+
+# ===== Display driver（必须受 CONFIG 保护）=====
+if(CONFIG_ZMK_DISPLAY)
+  add_subdirectory(drivers/display)
+endif()
+
+# ===== LVGL port（必须受 CONFIG 保护）=====
+if(CONFIG_LVGL)
+  add_subdirectory(modules/lvgl)
+endif()
