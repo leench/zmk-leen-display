@@ -2,11 +2,17 @@
 #include <lvgl.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zmk/display.h>
+#include <zmk/event_manager.h>
 
-LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
+#include "raw_hid_bridge.h"
+
+LOG_MODULE_REGISTER(sysicon, LOG_LEVEL_DBG);
 
 // 字体声明
 LV_FONT_DECLARE(nerd_modifiers_28);
+
+static struct zmk_widget_sysicon *active_sysicon_widget = NULL;
 
 // 系统图标映射
 static const char *system_icons[] = {
@@ -20,15 +26,30 @@ static const char *system_icons[] = {
 static const lv_color_t system_colors[] = {
     LV_COLOR_MAKE(128, 128, 128),  // SYS_UNKNOWN (灰色)
 
-    // Windows：Fluent 橙
-    LV_COLOR_MAKE(240, 130, 60),
+    // Windows
+    LV_COLOR_MAKE(9, 224, 254),
 
-    // Linux：自由蓝（偏 Cyan）
+    // Linux
     LV_COLOR_MAKE(0, 160, 190),
 
-    // macOS：极浅冷灰
+    // macOS
     LV_COLOR_MAKE(225, 225, 230),
 };
+
+// 获取当前操作系统状态的函数
+static inline struct os_notification get_os(const zmk_event_t *eh) {
+    // 从事件中提取 os_notification 数据
+    struct os_notification *notification = as_os_notification(eh);
+    
+    if (notification) {
+        LOG_DBG("get_os: extracted system_type=%d from event", 
+                notification->system_type);
+        return *notification;
+    }
+    
+    LOG_WRN("get_os: failed to extract notification, returning UNKNOWN");
+    return (struct os_notification){.system_type = SYS_UNKNOWN};
+}
 
 static void update_sysicon_display(struct zmk_widget_sysicon *widget) {
     if (!widget || !widget->obj) {
@@ -45,6 +66,44 @@ static void update_sysicon_display(struct zmk_widget_sysicon *widget) {
     // 显示对象
     lv_obj_clear_flag(widget->obj, LV_OBJ_FLAG_HIDDEN);
 }
+
+void zmk_widget_sysicon_set_system(struct zmk_widget_sysicon *widget, enum system_type system_type) {
+    if (!widget) {
+        return;
+    }
+
+    // 验证系统类型
+    if (system_type < SYS_UNKNOWN || system_type > SYS_MACOS) {
+        LOG_WRN("Invalid system type: %d", system_type);
+        system_type = SYS_UNKNOWN;
+    }
+
+    // 如果系统类型没有变化，不更新
+    if (widget->current_system == system_type) {
+        return;
+    }
+
+    widget->current_system = system_type;
+    update_sysicon_display(widget);
+    
+    LOG_DBG("System type changed to: %d", system_type);
+}
+
+lv_obj_t *zmk_widget_sysicon_obj(struct zmk_widget_sysicon *widget) {
+    return widget ? widget->obj : NULL;
+}
+
+static void os_update_cb(struct os_notification os) {
+    if (active_sysicon_widget) {
+        zmk_widget_sysicon_set_system(active_sysicon_widget, (enum system_type)os.system_type);
+    }
+    
+    LOG_INF("OS notification received, system type: %d", os.system_type);
+}
+
+ZMK_DISPLAY_WIDGET_LISTENER(widget_sysicon, struct os_notification, os_update_cb, get_os)
+ZMK_SUBSCRIPTION(widget_sysicon, os_notification);
+
 
 int zmk_widget_sysicon_init(struct zmk_widget_sysicon *widget, lv_obj_t *parent, 
                            struct zmk_widget_bongo_cat *bongo_widget) {
@@ -89,31 +148,9 @@ int zmk_widget_sysicon_init(struct zmk_widget_sysicon *widget, lv_obj_t *parent,
     // 初始显示
     update_sysicon_display(widget);
 
+    active_sysicon_widget = widget;
+
+    widget_sysicon_init();
+
     return 0;
-}
-
-void zmk_widget_sysicon_set_system(struct zmk_widget_sysicon *widget, enum system_type system_type) {
-    if (!widget) {
-        return;
-    }
-
-    // 验证系统类型
-    if (system_type < SYS_UNKNOWN || system_type > SYS_MACOS) {
-        LOG_WRN("Invalid system type: %d", system_type);
-        system_type = SYS_UNKNOWN;
-    }
-
-    // 如果系统类型没有变化，不更新
-    if (widget->current_system == system_type) {
-        return;
-    }
-
-    widget->current_system = system_type;
-    update_sysicon_display(widget);
-    
-    LOG_DBG("System type changed to: %d", system_type);
-}
-
-lv_obj_t *zmk_widget_sysicon_obj(struct zmk_widget_sysicon *widget) {
-    return widget ? widget->obj : NULL;
 }

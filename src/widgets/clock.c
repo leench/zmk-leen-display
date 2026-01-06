@@ -1,91 +1,25 @@
 #include "clock.h"
 #include <stdio.h>
-#include <stdlib.h>  // abs()
+#include <stdlib.h>
+#include <zephyr/logging/log.h>
+#include <zmk/display.h>
+#include <zmk/event_manager.h>
+
+#include "raw_hid_bridge.h"
 
 #include "fonts/lv_font_jetbrainsmono_24.h"
 #include "fonts/lv_font_jetbrainsmono_40.h"
 
+// 同步阈值（秒），当 HID 时间与本地时间差 <= 该值时不进行同步
+#define CLOCK_SYNC_THRESHOLD_S 30
+
+LOG_MODULE_REGISTER(clock, LOG_LEVEL_DBG);
+
+static struct zmk_widget_clock *active_clock_widget = NULL;
+
 static void clock_tick(struct k_timer *timer);
 static void clock_update_display(struct zmk_widget_clock *widget);
 
-/* =========================
- * 初始化
- * ========================= */
-int zmk_widget_clock_init(struct zmk_widget_clock *widget, lv_obj_t *parent) {
-    if (!widget || !parent) {
-        return -EINVAL;
-    }
-    
-    // 检查是否已初始化
-    if (widget->obj) {
-        return 0;
-    }
-    
-    widget->hour = 0;
-    widget->minute = 0;
-    widget->second = 0;
-    widget->has_sync = false;
-
-    /* ========= 根容器 ========= */
-    widget->obj = lv_obj_create(parent);
-    if (!widget->obj) {
-        return -ENOMEM;
-    }
-    
-    lv_obj_clear_flag(widget->obj, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_opa(widget->obj, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(widget->obj, 0, 0);
-    lv_obj_set_style_pad_all(widget->obj, 0, 0);
-
-    /* 让容器包裹内容 */
-    lv_obj_set_size(widget->obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-
-    /* ========= HH:MM ========= */
-    widget->label_hm = lv_label_create(widget->obj);
-    if (!widget->label_hm) {
-        lv_obj_del(widget->obj);
-        widget->obj = NULL;
-        return -ENOMEM;
-    }
-    
-    lv_label_set_text(widget->label_hm, "00:00");
-    lv_obj_set_style_text_font(widget->label_hm, &lv_font_jetbrainsmono_40, 0);
-    lv_obj_set_style_text_color(widget->label_hm, lv_color_white(), 0);
-    lv_obj_set_size(widget->label_hm, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-
-    /* 保持容器内顶部左对齐 */
-    lv_obj_align(widget->label_hm, LV_ALIGN_TOP_LEFT, 0, 0);
-
-    /* ========= 秒 ========= */
-    widget->label_sec = lv_label_create(widget->obj);
-    if (!widget->label_sec) {
-        lv_obj_del(widget->obj);
-        widget->obj = NULL;
-        widget->label_hm = NULL;
-        return -ENOMEM;
-    }
-    
-    lv_label_set_text(widget->label_sec, "00");
-    lv_obj_set_style_text_font(widget->label_sec, &lv_font_jetbrainsmono_24, 0);
-    lv_obj_set_style_text_color(widget->label_sec, lv_color_make(155, 155, 225), 0);
-    lv_obj_set_size(widget->label_sec, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-
-    /* 秒数相对于 HH:MM 右下对齐 */
-    lv_obj_align_to(widget->label_sec, widget->label_hm,
-                    LV_ALIGN_OUT_RIGHT_BOTTOM, 6, 2);
-
-    /* ========= 根容器整体偏移 ========= */
-    lv_obj_align(widget->obj, LV_ALIGN_TOP_LEFT, 0, 0);
-
-    /* ========= 本地 1s tick ========= */
-    k_timer_init(&widget->timer, clock_tick, NULL);
-    k_timer_user_data_set(&widget->timer, widget);
-    
-    // 暂时不启动定时器，等待同步后再启动
-    // k_timer_start(&widget->timer, K_SECONDS(1), K_SECONDS(1));
-
-    return 0;
-}
 
 /* =========================
  * 显示更新
@@ -243,4 +177,106 @@ void zmk_widget_clock_get_time(struct zmk_widget_clock *widget,
     *hour = widget->hour;
     *minute = widget->minute;
     *second = widget->second;
+}
+
+static struct time_notification get_clock(const zmk_event_t *eh) {
+    struct time_notification *notification = as_time_notification(eh);
+    if (notification) {
+        return *notification;
+    }
+    return (struct time_notification){.hour = 0, .minute = 0};
+}
+
+static void clock_update_cb(struct time_notification time) {
+    if (active_clock_widget) {
+        zmk_widget_clock_sync(active_clock_widget, time.hour, time.minute, 0, CLOCK_SYNC_THRESHOLD_S);
+    }
+    
+    LOG_INF("Clock notification received, hour: %d, minute: %d", time.hour, time.minute);
+}
+
+ZMK_DISPLAY_WIDGET_LISTENER(widget_clock, struct time_notification, clock_update_cb, get_clock)
+ZMK_SUBSCRIPTION(widget_clock, time_notification);
+
+/* =========================
+ * 初始化
+ * ========================= */
+int zmk_widget_clock_init(struct zmk_widget_clock *widget, lv_obj_t *parent) {
+    if (!widget || !parent) {
+        return -EINVAL;
+    }
+    
+    // 检查是否已初始化
+    if (widget->obj) {
+        return 0;
+    }
+    
+    widget->hour = 0;
+    widget->minute = 0;
+    widget->second = 0;
+    widget->has_sync = false;
+
+    /* ========= 根容器 ========= */
+    widget->obj = lv_obj_create(parent);
+    if (!widget->obj) {
+        return -ENOMEM;
+    }
+    
+    lv_obj_clear_flag(widget->obj, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(widget->obj, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(widget->obj, 0, 0);
+    lv_obj_set_style_pad_all(widget->obj, 0, 0);
+
+    /* 让容器包裹内容 */
+    lv_obj_set_size(widget->obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+
+    /* ========= HH:MM ========= */
+    widget->label_hm = lv_label_create(widget->obj);
+    if (!widget->label_hm) {
+        lv_obj_del(widget->obj);
+        widget->obj = NULL;
+        return -ENOMEM;
+    }
+    
+    lv_label_set_text(widget->label_hm, "00:00");
+    lv_obj_set_style_text_font(widget->label_hm, &lv_font_jetbrainsmono_40, 0);
+    lv_obj_set_style_text_color(widget->label_hm, lv_color_white(), 0);
+    lv_obj_set_size(widget->label_hm, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+
+    /* 保持容器内顶部左对齐 */
+    lv_obj_align(widget->label_hm, LV_ALIGN_TOP_LEFT, 0, 0);
+
+    /* ========= 秒 ========= */
+    widget->label_sec = lv_label_create(widget->obj);
+    if (!widget->label_sec) {
+        lv_obj_del(widget->obj);
+        widget->obj = NULL;
+        widget->label_hm = NULL;
+        return -ENOMEM;
+    }
+    
+    lv_label_set_text(widget->label_sec, "00");
+    lv_obj_set_style_text_font(widget->label_sec, &lv_font_jetbrainsmono_24, 0);
+    lv_obj_set_style_text_color(widget->label_sec, lv_color_make(155, 155, 225), 0);
+    lv_obj_set_size(widget->label_sec, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+
+    /* 秒数相对于 HH:MM 右下对齐 */
+    lv_obj_align_to(widget->label_sec, widget->label_hm,
+                    LV_ALIGN_OUT_RIGHT_BOTTOM, 6, 2);
+
+    /* ========= 根容器整体偏移 ========= */
+    lv_obj_align(widget->obj, LV_ALIGN_TOP_LEFT, 0, 0);
+
+    /* ========= 本地 1s tick ========= */
+    k_timer_init(&widget->timer, clock_tick, NULL);
+    k_timer_user_data_set(&widget->timer, widget);
+    
+    // 暂时不启动定时器，等待同步后再启动
+    // k_timer_start(&widget->timer, K_SECONDS(1), K_SECONDS(1));
+
+    active_clock_widget = widget;
+
+    widget_clock_init();
+
+    return 0;
 }

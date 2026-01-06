@@ -1,6 +1,13 @@
 #include "volume.h"
 #include <lvgl.h>
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
+#include <zmk/display.h>
+#include <zmk/event_manager.h>
+
+#include "raw_hid_bridge.h"
+
+LOG_MODULE_REGISTER(volume, LOG_LEVEL_DBG);
 
 #define VOLUME_MIN 0
 #define VOLUME_MAX 100
@@ -10,41 +17,9 @@
 #define ANIM_DURATION 300
 #define ALIGN_SPACING 5
 
+static struct zmk_widget_volume *active_volume_widget = NULL;
+
 static const lv_color_t COLOR_GRAY = LV_COLOR_MAKE(0x50, 0x50, 0x50);
-
-int zmk_widget_volume_init(struct zmk_widget_volume *widget, lv_obj_t *parent, 
-                          struct zmk_widget_clock *clock_widget) {
-    if (!widget || !parent || !clock_widget) {
-        return -EINVAL;
-    }
-
-    widget->volume = VOLUME_DEFAULT;
-
-    widget->obj = lv_obj_create(parent);
-    lv_obj_clear_flag(widget->obj, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_opa(widget->obj, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(widget->obj, 0, 0);
-    lv_obj_set_size(widget->obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-
-    widget->bar = lv_bar_create(widget->obj);
-    lv_bar_set_range(widget->bar, VOLUME_MIN, VOLUME_MAX);
-    lv_bar_set_value(widget->bar, widget->volume, LV_ANIM_OFF);
-
-    // 设置初始颜色（红色满条）
-    lv_obj_set_style_bg_color(widget->bar, lv_color_make(255, 0, 0), LV_PART_INDICATOR);
-    lv_obj_set_style_bg_opa(widget->bar, LV_OPA_COVER, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_color(widget->bar, COLOR_GRAY, LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(widget->bar, LV_OPA_COVER, LV_PART_MAIN);
-
-    lv_coord_t width = lv_obj_get_width(clock_widget->label_hm) + 
-                      lv_obj_get_width(clock_widget->label_sec) + 
-                      CLOCK_SPACING;
-    
-    lv_obj_set_size(widget->bar, width, BAR_HEIGHT);
-    lv_obj_align_to(widget->obj, clock_widget->label_hm, LV_ALIGN_OUT_BOTTOM_LEFT, 0, ALIGN_SPACING);
-
-    return 0;
-}
 
 lv_obj_t *zmk_widget_volume_obj(struct zmk_widget_volume *widget) {
     return widget ? widget->obj : NULL;
@@ -89,4 +64,61 @@ void zmk_widget_volume_set(struct zmk_widget_volume *widget, int value) {
 
     widget->volume = value;
     lv_obj_set_style_bg_color(widget->bar, calculate_color(value), LV_PART_INDICATOR);
+}
+
+static struct volume_notification get_volume(const zmk_event_t *eh) {
+    struct volume_notification *notification = as_volume_notification(eh);
+    if (notification) {
+        return *notification;
+    }
+    return (struct volume_notification){.value = 0};
+}
+
+static void volume_update_cb(struct volume_notification volume) {
+    if (active_volume_widget) {
+        zmk_widget_volume_set(active_volume_widget, volume.value);
+    }
+    
+    LOG_INF("Volume notification received, volume: %d", volume.value);
+}
+
+ZMK_DISPLAY_WIDGET_LISTENER(widget_volume, struct volume_notification, volume_update_cb, get_volume)
+ZMK_SUBSCRIPTION(widget_volume, volume_notification);
+
+int zmk_widget_volume_init(struct zmk_widget_volume *widget, lv_obj_t *parent, 
+                          struct zmk_widget_clock *clock_widget) {
+    if (!widget || !parent || !clock_widget) {
+        return -EINVAL;
+    }
+
+    widget->volume = VOLUME_DEFAULT;
+
+    widget->obj = lv_obj_create(parent);
+    lv_obj_clear_flag(widget->obj, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(widget->obj, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(widget->obj, 0, 0);
+    lv_obj_set_size(widget->obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+
+    widget->bar = lv_bar_create(widget->obj);
+    lv_bar_set_range(widget->bar, VOLUME_MIN, VOLUME_MAX);
+    lv_bar_set_value(widget->bar, widget->volume, LV_ANIM_OFF);
+
+    // 设置初始颜色（红色满条）
+    lv_obj_set_style_bg_color(widget->bar, lv_color_make(255, 0, 0), LV_PART_INDICATOR);
+    lv_obj_set_style_bg_opa(widget->bar, LV_OPA_COVER, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(widget->bar, COLOR_GRAY, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(widget->bar, LV_OPA_COVER, LV_PART_MAIN);
+
+    lv_coord_t width = lv_obj_get_width(clock_widget->label_hm) + 
+                      lv_obj_get_width(clock_widget->label_sec) + 
+                      CLOCK_SPACING;
+    
+    lv_obj_set_size(widget->bar, width, BAR_HEIGHT);
+    lv_obj_align_to(widget->obj, clock_widget->label_hm, LV_ALIGN_OUT_BOTTOM_LEFT, 0, ALIGN_SPACING);
+
+    active_volume_widget = widget;
+
+    widget_volume_init();
+
+    return 0;
 }
