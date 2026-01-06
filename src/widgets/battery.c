@@ -58,8 +58,8 @@ static void set_battery_display(uint8_t source, uint8_t level) {
             lv_obj_set_style_text_color(ui->label, lv_color_hex(0xFFB802), 0);
         } else if (level < 50) {
             /* 20%-50%：保持原来的橙色系 */
-            lv_obj_set_style_bg_color(ui->bar, lv_color_make(211, 144, 15), LV_PART_INDICATOR);
-            lv_obj_set_style_bg_color(ui->bar, lv_color_make(110, 78, 7), LV_PART_MAIN);
+            lv_obj_set_style_bg_color(ui->bar, lv_color_make(220, 160, 100), LV_PART_INDICATOR);
+            lv_obj_set_style_bg_color(ui->bar, lv_color_make(80, 60, 40), LV_PART_MAIN);
             lv_obj_set_style_text_color(ui->label, lv_color_hex(0xFFFFFF), 0);
         } else {
             /* 50%以上：偏白一点的灰色系 */

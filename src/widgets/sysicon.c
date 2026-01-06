@@ -19,9 +19,15 @@ static const char *system_icons[] = {
 // 系统颜色映射
 static const lv_color_t system_colors[] = {
     LV_COLOR_MAKE(128, 128, 128),  // SYS_UNKNOWN (灰色)
-    LV_COLOR_MAKE(0, 120, 215),    // SYS_WINDOWS (蓝色)
-    LV_COLOR_MAKE(255, 69, 0),     // SYS_LINUX (橙色)
-    LV_COLOR_MAKE(255, 255, 255),  // SYS_MACOS (白色)
+
+    // Windows：Fluent 橙
+    LV_COLOR_MAKE(240, 130, 60),
+
+    // Linux：自由蓝（偏 Cyan）
+    LV_COLOR_MAKE(0, 160, 190),
+
+    // macOS：极浅冷灰
+    LV_COLOR_MAKE(225, 225, 230),
 };
 
 static void update_sysicon_display(struct zmk_widget_sysicon *widget) {
