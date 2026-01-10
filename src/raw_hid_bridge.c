@@ -21,7 +21,7 @@ typedef enum {
     HID_OS,
 } hid_data_type;
 
-static bool hid_connected = false;
+// static bool hid_connected = false;
 
 
 /* 静态 HID 缓冲区 */

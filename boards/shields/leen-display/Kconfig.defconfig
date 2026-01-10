@@ -87,7 +87,7 @@ config DONGLE_SCREEN_IDLE_DIM_BRIGHTNESS
 
 config DONGLE_SCREEN_MAX_BRIGHTNESS
     int "Maximum screen brightness (1-100)"
-    default 80
+    default 85
     range 1 100
     help
         This is the brightness which is used when the dongle is powered on. This is also the maximum brightness used by the dimmer.
