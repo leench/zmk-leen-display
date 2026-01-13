@@ -18,6 +18,7 @@ ZMK_EVENT_DECLARE(connected_notification);
 struct time_notification {
     uint8_t hour;
     uint8_t minute;
+    uint8_t second;
 };
 
 ZMK_EVENT_DECLARE(time_notification);

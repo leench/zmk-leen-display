@@ -184,15 +184,15 @@ static struct time_notification get_clock(const zmk_event_t *eh) {
     if (notification) {
         return *notification;
     }
-    return (struct time_notification){.hour = 0, .minute = 0};
+    return (struct time_notification){.hour = 0, .minute = 0, .second = 0};
 }
 
 static void clock_update_cb(struct time_notification time) {
     if (active_clock_widget) {
-        zmk_widget_clock_sync(active_clock_widget, time.hour, time.minute, 0, CLOCK_SYNC_THRESHOLD_S);
+        zmk_widget_clock_sync(active_clock_widget, time.hour, time.minute, time.second, CLOCK_SYNC_THRESHOLD_S);
     }
     
-    LOG_INF("Clock notification received, hour: %d, minute: %d", time.hour, time.minute);
+    LOG_INF("Clock notification received, hour: %d, minute: %d, second: %d", time.hour, time.minute, time.second);
 }
 
 ZMK_DISPLAY_WIDGET_LISTENER(widget_clock, struct time_notification, clock_update_cb, get_clock)

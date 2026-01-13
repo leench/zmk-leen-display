@@ -58,7 +58,7 @@ static void process_raw_hid_data(uint8_t *data) {
     uint8_t data_type = data[0];
     switch (data_type) {
         case HID_TIME:
-            raise_time_notification((struct time_notification){.hour = data[1], .minute = data[2]});
+            raise_time_notification((struct time_notification){.hour = data[1], .minute = data[2], .second = data[3]});
             break;
         case HID_VOLUME:
             last_hid_volume = data[1];
