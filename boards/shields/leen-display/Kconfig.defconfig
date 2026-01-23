@@ -6,9 +6,9 @@ endchoice
 
 config ZMK_DISPLAY_STATUS_SCREEN_CUSTOM
     select LV_USE_LABEL
+    select LV_USE_IMG
     select LV_USE_BAR
     select LV_USE_FLEX
-    select LV_USE_IMG
     select LV_USE_ANIMIMG 
     select LV_USE_ANIMATION
     select LV_COLOR_SCREEN_TRANSP
@@ -34,10 +34,16 @@ choice ST7789V_PIXEL_FORMAT
 endchoice
 
 config LV_Z_VDB_SIZE
-    default 40
+    default 50
+
+config LV_Z_DOUBLE_VDB
+    default y
+
+config LV_Z_FLUSH_THREAD
+    default y
 
 config LV_Z_MEM_POOL_SIZE
-    default 8192
+    default 16384
 
 config LV_DPI_DEF
     default 261
@@ -53,6 +59,7 @@ config LV_COLOR_16_SWAP
 	default y
 
 config LV_DISP_DEF_REFR_PERIOD
+    int
     default 20
 
 config PWM

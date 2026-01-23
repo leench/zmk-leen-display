@@ -1,8 +1,14 @@
-zephyr_library()
-
-zephyr_include_directories(include)
-
 if(CONFIG_ZMK_DISPLAY_STATUS_SCREEN_CUSTOM)
+  zephyr_library()
+  zephyr_library_sources(${ZEPHYR_BASE}/misc/empty_file.c)
+  zephyr_library_include_directories(${ZEPHYR_LVGL_MODULE_DIR})
+  zephyr_library_include_directories(${ZEPHYR_BASE}/lib/gui/lvgl/)
+  zephyr_library_include_directories(${ZEPHYR_BASE}/drivers)
+  zephyr_library_include_directories(${CMAKE_SOURCE_DIR}/include)
+  zephyr_library_include_directories(${ZEPHYR_CURRENT_MODULE_DIR}/include)
+  zephyr_library_include_directories(${ZEPHYR_CURRENT_CMAKE_DIR}/include)
+  zephyr_library_include_directories(include)
+
   # ===== 核心源文件 =====
   zephyr_library_sources(
       src/custom_status_screen.c
@@ -38,5 +44,5 @@ if(CONFIG_ZMK_DISPLAY_STATUS_SCREEN_CUSTOM)
 
 # ===== LVGL port（必须受 CONFIG 保护）=====
 # if(CONFIG_LVGL)
-  add_subdirectory(modules/lvgl)
+  # add_subdirectory(modules/lvgl)
 endif()
