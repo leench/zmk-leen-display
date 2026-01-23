@@ -8,6 +8,8 @@
 #include <zmk/events/usb_conn_state_changed.h>
 #include <zmk/event_manager.h>
 
+#include "../brightness.h"
+
 #include "fonts/lv_font_jetbrainsmono_20.h"
 
 LOG_MODULE_REGISTER(widget_battery, LOG_LEVEL_DBG);
@@ -28,10 +30,42 @@ typedef struct {
 
 static battery_ui_t battery_uis[ZMK_SPLIT_BLE_PERIPHERAL_COUNT];
 
+
+static int8_t last_battery_levels[ZMK_SPLIT_BLE_PERIPHERAL_COUNT];
+
+static void init_peripheral_tracking(void) {
+    for (int i = 0; i < (ZMK_SPLIT_BLE_PERIPHERAL_COUNT); i++) {
+        last_battery_levels[i] = -1; // -1 indicates never seen before
+    }
+}
+
+static bool is_peripheral_reconnecting(uint8_t source, uint8_t new_level) {
+    if (source >= ZMK_SPLIT_BLE_PERIPHERAL_COUNT) return false;
+    
+    bool reconnecting = false;
+    int8_t last_level = last_battery_levels[source];
+    
+    // 情况1：从未见过（-1）且现在有电量（>0）
+    // 情况2：之前断开（0）且现在有电量（>0）
+    if ((last_level <= 0) && (new_level > 0)) {
+        reconnecting = true;
+    }
+    
+    // 更新电量记录
+    last_battery_levels[source] = new_level;
+    
+    return reconnecting;
+}
+
 // 设置单个电池显示
 static void set_battery_display(uint8_t source, uint8_t level) {
     if (source >= ZMK_SPLIT_BLE_PERIPHERAL_COUNT) return;
-    
+
+    if (is_peripheral_reconnecting(source, level)) {
+        // 如果是重新连接，唤醒屏幕
+        brightness_wake_screen_on_reconnect();
+    }
+
     battery_ui_t *ui = &battery_uis[source];
     
     if (!ui || !ui->bar || !ui->label || !lv_obj_is_valid(ui->bar) || !lv_obj_is_valid(ui->label)) {
@@ -148,6 +182,8 @@ int zmk_widget_battery_bar_init(struct zmk_widget_battery *widget, lv_obj_t *par
         LOG_WRN("电池 widget 已初始化");
         return 0;
     }
+
+    init_peripheral_tracking();
     
     widget->obj = lv_obj_create(parent);
     if (!widget->obj) return -ENOMEM;
@@ -188,64 +224,64 @@ lv_obj_t *zmk_widget_battery_bar_obj(struct zmk_widget_battery *widget) {
     return widget ? widget->obj : NULL; 
 }
 
-// 手动更新
-void zmk_widget_battery_bar_update(struct zmk_widget_battery *widget, 
-                                   uint8_t left_level, uint8_t right_level) {
-    if (!widget || !widget->obj) return;
+// // 手动更新
+// void zmk_widget_battery_bar_update(struct zmk_widget_battery *widget, 
+//                                    uint8_t left_level, uint8_t right_level) {
+//     if (!widget || !widget->obj) return;
     
-    set_battery_display(0, left_level);
-    if (ZMK_SPLIT_BLE_PERIPHERAL_COUNT > 1) {
-        set_battery_display(1, right_level);
-    }
-}
+//     set_battery_display(0, left_level);
+//     if (ZMK_SPLIT_BLE_PERIPHERAL_COUNT > 1) {
+//         set_battery_display(1, right_level);
+//     }
+// }
 
-void zmk_widget_battery_bar_set_connected(struct zmk_widget_battery *widget,
-                                          uint8_t source, bool connected) {
-    if (!widget || !widget->obj || source >= ZMK_SPLIT_BLE_PERIPHERAL_COUNT) return;
+// void zmk_widget_battery_bar_set_connected(struct zmk_widget_battery *widget,
+//                                           uint8_t source, bool connected) {
+//     if (!widget || !widget->obj || source >= ZMK_SPLIT_BLE_PERIPHERAL_COUNT) return;
     
-    set_battery_display(source, connected ? 50 : 0);
-}
+//     set_battery_display(source, connected ? 50 : 0);
+// }
 
-void zmk_widget_battery_bar_destroy(struct zmk_widget_battery *widget) {
-    if (!widget) return;
+// void zmk_widget_battery_bar_destroy(struct zmk_widget_battery *widget) {
+//     if (!widget) return;
     
-    // 从全局链表中移除
-    struct zmk_widget_battery *prev = NULL;
-    struct zmk_widget_battery *curr;
+//     // 从全局链表中移除
+//     struct zmk_widget_battery *prev = NULL;
+//     struct zmk_widget_battery *curr;
     
-    SYS_SLIST_FOR_EACH_CONTAINER(&widgets, curr, node) {
-        if (curr == widget) {
-            if (prev) {
-                sys_slist_remove(&widgets, &prev->node, &widget->node);
-            } else {
-                // 如果是第一个节点
-                sys_slist_t *head = &widgets;
-                sys_slist_remove(head, NULL, &widget->node);
-            }
-            break;
-        }
-        prev = curr;
-    }
+//     SYS_SLIST_FOR_EACH_CONTAINER(&widgets, curr, node) {
+//         if (curr == widget) {
+//             if (prev) {
+//                 sys_slist_remove(&widgets, &prev->node, &widget->node);
+//             } else {
+//                 // 如果是第一个节点
+//                 sys_slist_t *head = &widgets;
+//                 sys_slist_remove(head, NULL, &widget->node);
+//             }
+//             break;
+//         }
+//         prev = curr;
+//     }
     
-    // 销毁 LVGL 对象
-    if (widget->obj) {
-        lv_obj_del(widget->obj);
-        widget->obj = NULL;
-    }
+//     // 销毁 LVGL 对象
+//     if (widget->obj) {
+//         lv_obj_del(widget->obj);
+//         widget->obj = NULL;
+//     }
     
-    // 清理 UI 对象引用（如果是最后一个 widget）
-    if (sys_slist_is_empty(&widgets)) {
-        for (int i = 0; i < ZMK_SPLIT_BLE_PERIPHERAL_COUNT; i++) {
-            battery_uis[i].bar = NULL;
-            battery_uis[i].label = NULL;
-        }
-    }
-}
+//     // 清理 UI 对象引用（如果是最后一个 widget）
+//     if (sys_slist_is_empty(&widgets)) {
+//         for (int i = 0; i < ZMK_SPLIT_BLE_PERIPHERAL_COUNT; i++) {
+//             battery_uis[i].bar = NULL;
+//             battery_uis[i].label = NULL;
+//         }
+//     }
+// }
 
-void zmk_widget_battery_bar_cleanup(void) {
-    struct zmk_widget_battery *widget, *tmp;
+// void zmk_widget_battery_bar_cleanup(void) {
+//     struct zmk_widget_battery *widget, *tmp;
     
-    SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&widgets, widget, tmp, node) {
-        zmk_widget_battery_bar_destroy(widget);
-    }
-}
+//     SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&widgets, widget, tmp, node) {
+//         zmk_widget_battery_bar_destroy(widget);
+//     }
+// }

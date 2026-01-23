@@ -31,6 +31,13 @@ static LV_ATTRIBUTE_LARGE_CONST const uint8_t glyph_bitmap[] = {
     0x1f, 0x38, 0xd8, 0x18, 0xc, 0x6, 0x3, 0x1,
     0x80, 0x60, 0x38, 0xc7, 0xc0,
 
+    /* U+F0E7 "" */
+    0x7f, 0x83, 0xfc, 0x1f, 0xc0, 0xfe, 0x7, 0xf0,
+    0x3f, 0x3, 0xff, 0xdf, 0xfe, 0xff, 0xf7, 0xff,
+    0x3f, 0xf8, 0xf, 0x80, 0x78, 0x3, 0xc0, 0x1c,
+    0x0, 0xe0, 0xe, 0x0, 0x70, 0x3, 0x0, 0x10,
+    0x0,
+
     /* U+F287 "" */
     0x0, 0x7, 0x0, 0x0, 0xf, 0xc0, 0x0, 0x1f,
     0xe0, 0x0, 0x8, 0xe0, 0x0, 0xc, 0x0, 0x3,
@@ -56,8 +63,9 @@ static const lv_font_fmt_txt_glyph_dsc_t glyph_dsc[] = {
     {.bitmap_index = 0, .adv_w = 183, .box_w = 10, .box_h = 11, .ofs_x = 1, .ofs_y = 2},
     {.bitmap_index = 14, .adv_w = 202, .box_w = 10, .box_h = 16, .ofs_x = 2, .ofs_y = 2},
     {.bitmap_index = 34, .adv_w = 166, .box_w = 9, .box_h = 11, .ofs_x = 1, .ofs_y = 2},
-    {.bitmap_index = 47, .adv_w = 400, .box_w = 25, .box_h = 15, .ofs_x = 0, .ofs_y = 0},
-    {.bitmap_index = 94, .adv_w = 200, .box_w = 11, .box_h = 21, .ofs_x = 0, .ofs_y = -3}
+    {.bitmap_index = 47, .adv_w = 200, .box_w = 13, .box_h = 20, .ofs_x = 0, .ofs_y = -3},
+    {.bitmap_index = 80, .adv_w = 400, .box_w = 25, .box_h = 15, .ofs_x = 0, .ofs_y = 0},
+    {.bitmap_index = 127, .adv_w = 200, .box_w = 11, .box_h = 21, .ofs_x = 0, .ofs_y = -3}
 };
 
 /*---------------------
@@ -65,7 +73,7 @@ static const lv_font_fmt_txt_glyph_dsc_t glyph_dsc[] = {
  *--------------------*/
 
 static const uint16_t unicode_list_0[] = {
-    0x0, 0x1, 0x2, 0xf226, 0xf233
+    0x0, 0x1, 0x2, 0xf086, 0xf226, 0xf233
 };
 
 /*Collect the unicode lists and glyph_id offsets*/
@@ -73,7 +81,7 @@ static const lv_font_fmt_txt_cmap_t cmaps[] =
 {
     {
         .range_start = 97, .range_length = 62004, .glyph_id_start = 1,
-        .unicode_list = unicode_list_0, .glyph_id_ofs_list = NULL, .list_length = 5, .type = LV_FONT_FMT_TXT_CMAP_SPARSE_TINY
+        .unicode_list = unicode_list_0, .glyph_id_ofs_list = NULL, .list_length = 6, .type = LV_FONT_FMT_TXT_CMAP_SPARSE_TINY
     }
 };
 
@@ -140,4 +148,3 @@ lv_font_t lv_font_symbol_20 = {
 
 
 #endif /*#if LV_FONT_SYMBOL_20*/
-

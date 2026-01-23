@@ -19,7 +19,7 @@ static const char *system_icons[] = {
     "-",        // SYS_UNKNOWN
     "",        // SYS_WINDOWS
     "󰌽",        // SYS_LINUX
-    "󰘳",        // SYS_MACOS
+    "󰀵",        // SYS_MACOS
 };
 
 // 系统颜色映射

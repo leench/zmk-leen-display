@@ -38,19 +38,19 @@ const uint8_t *raw_hid_bridge_get_buffer(void)
     return hid_buf;
 }
 
-static uint8_t last_hid_volume = 0;
-static uint8_t last_raised_volume = 0;
+// static uint8_t last_hid_volume = 0;
+// static uint8_t last_raised_volume = 0;
 
-static void on_volume_timer(struct k_timer *dummy) {
-    // prevent raising event with the same value multiple times
-    if (last_raised_volume != last_hid_volume) {
-        last_raised_volume = last_hid_volume;
-        LOG_INF("raise_volume_notification %i", last_hid_volume);
-        raise_volume_notification((struct volume_notification){.value = last_hid_volume});
-    }
-}
+// static void on_volume_timer(struct k_timer *dummy) {
+//     // prevent raising event with the same value multiple times
+//     if (last_raised_volume != last_hid_volume) {
+//         last_raised_volume = last_hid_volume;
+//         LOG_INF("raise_volume_notification %i", last_hid_volume);
+//         raise_volume_notification((struct volume_notification){.value = last_hid_volume});
+//     }
+// }
 
-K_TIMER_DEFINE(volume_timer, on_volume_timer, NULL);
+// K_TIMER_DEFINE(volume_timer, on_volume_timer, NULL);
 
 static void process_raw_hid_data(uint8_t *data) {
     LOG_INF("display_process_raw_hid_data - received data_type %u", data[0]);
@@ -61,14 +61,15 @@ static void process_raw_hid_data(uint8_t *data) {
             raise_time_notification((struct time_notification){.hour = data[1], .minute = data[2], .second = data[3]});
             break;
         case HID_VOLUME:
-            last_hid_volume = data[1];
+            // last_hid_volume = data[1];
 
             // debounce volume change events
-            if (k_timer_status_get(&volume_timer) > 0 || k_timer_remaining_get(&volume_timer) == 0) {
-                k_timer_start(&volume_timer, K_MSEC(150), K_NO_WAIT);
-                on_volume_timer(&volume_timer);
-            }
-
+            // if (k_timer_status_get(&volume_timer) > 0 || k_timer_remaining_get(&volume_timer) == 0) {
+            //     k_timer_start(&volume_timer, K_MSEC(150), K_NO_WAIT);
+            //     on_volume_timer(&volume_timer);
+            // }
+            LOG_INF("raise_volume_notification %i", data[1]);
+            raise_volume_notification((struct volume_notification){.value = data[1]});
             break;
         case HID_OS:
             LOG_INF("HID_OS data received: data[0]=%u, data[1]=%u, data[2]=%u", data[0], data[1], data[2]);
