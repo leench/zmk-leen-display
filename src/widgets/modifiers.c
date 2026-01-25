@@ -10,10 +10,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 // 字体声明
 LV_FONT_DECLARE(nerd_modifiers_28);
 
-// 全局widget引用
-static struct zmk_widget_modifiers *global_widget = NULL;
-
-// 系统类型（默认为未知）
+// 全局系统类型（因为头文件中widget没有这个字段）
 static enum system_type current_system = SYS_UNKNOWN;
 
 // 修饰键对应的图标（Ctrl, Shift, Alt）
@@ -27,11 +24,11 @@ static const char *mod_icons[] = {
 static const char *gui_icons[] = {
     "󰘳",  // SYS_UNKNOWN - 默认通用图标
     "",  // SYS_WINDOWS - Windows图标
-    "󰘳",  // SYS_LINUX - Linux通用图标
-    "󰘳",  // SYS_MACOS - macOS通用图标（可以改为苹果图标）
+    "󰌽",  // SYS_LINUX - Linux通用图标
+    "󰀵",  // SYS_MACOS - macOS通用图标
 };
 
-// 设置系统类型
+// 设置系统类型（全局设置）
 void zmk_widget_modifiers_set_system_type(enum system_type type)
 {
     if (type < SYS_UNKNOWN || type > SYS_MACOS) {
@@ -39,22 +36,17 @@ void zmk_widget_modifiers_set_system_type(enum system_type type)
     }
     
     current_system = type;
-    LOG_DBG("Modifiers system type set to: %d", type);
-    
-    // 如果widget已初始化，立即更新显示
-    if (global_widget && global_widget->obj) {
-        zmk_widget_modifiers_update(global_widget);
-    }
+    LOG_DBG("System type set to: %d", type);
 }
 
-// 获取GUI图标（根据系统类型）
-static const char *get_gui_icon(void)
+// 获取GUI图标
+static inline const char *get_gui_icon(void)
 {
     return gui_icons[current_system];
 }
 
-// 简化版：检查修饰键变化并更新顺序
-static void update_simple_order(struct zmk_widget_modifiers *widget, uint8_t current_mods)
+// 更新按键顺序
+static void update_mod_order(struct zmk_widget_modifiers *widget, uint8_t current_mods)
 {
     static const uint8_t mod_masks[4] = {
         (MOD_LCTL | MOD_RCTL),  // Ctrl
@@ -66,26 +58,26 @@ static void update_simple_order(struct zmk_widget_modifiers *widget, uint8_t cur
     uint8_t last_mods = widget->last_mods;
     
     // 检查每个修饰键的变化
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < MOD_COUNT; i++) {
         uint8_t mask = mod_masks[i];
         bool was_pressed = (last_mods & mask) != 0;
         bool is_pressed = (current_mods & mask) != 0;
         
         if (!was_pressed && is_pressed) {
-            // 新按下的键，添加到顺序列表末尾
-            bool already_in_list = false;
+            // 新按下的键：添加到顺序列表末尾（如果不在列表中）
+            bool found = false;
             for (int j = 0; j < widget->order_count; j++) {
                 if (widget->mod_order[j] == i) {
-                    already_in_list = true;
+                    found = true;
                     break;
                 }
             }
             
-            if (!already_in_list && widget->order_count < MAX_MOD_ORDER) {
+            if (!found && widget->order_count < MAX_MOD_ORDER) {
                 widget->mod_order[widget->order_count++] = i;
             }
         } else if (was_pressed && !is_pressed) {
-            // 释放的键，从顺序列表中移除
+            // 释放的键：从顺序列表中移除
             for (int j = 0; j < widget->order_count; j++) {
                 if (widget->mod_order[j] == i) {
                     // 将后面的元素前移
@@ -103,30 +95,24 @@ static void update_simple_order(struct zmk_widget_modifiers *widget, uint8_t cur
 // 构建显示文本
 static void build_display_text(struct zmk_widget_modifiers *widget, uint8_t current_mods, char *text, size_t text_size)
 {
+    static const uint8_t mod_masks[4] = {
+        (MOD_LCTL | MOD_RCTL),  // Ctrl
+        (MOD_LSFT | MOD_RSFT),  // Shift
+        (MOD_LALT | MOD_RALT),  // Alt
+        (MOD_LGUI | MOD_RGUI),  // GUI
+    };
+    
     int idx = 0;
     
     if (widget->extend_left) {
-        // 向左延伸：先按的键在左边（正常顺序）
+        // 向左延伸：正常顺序（先按的在左边）
         for (int i = 0; i < widget->order_count; i++) {
             uint8_t mod_index = widget->mod_order[i];
-            
-            // 确保这个修饰键当前仍然按下
-            uint8_t mask = 0;
-            switch (mod_index) {
-                case 0: mask = (MOD_LCTL | MOD_RCTL); break;
-                case 1: mask = (MOD_LSFT | MOD_RSFT); break;
-                case 2: mask = (MOD_LALT | MOD_RALT); break;
-                case 3: mask = (MOD_LGUI | MOD_RGUI); break;
-            }
+            uint8_t mask = mod_masks[mod_index];
             
             if (current_mods & mask) {
-                const char *icon = NULL;
-                if (mod_index == 3) {
-                    // GUI键，根据系统类型选择图标
-                    icon = get_gui_icon();
-                } else {
-                    icon = mod_icons[mod_index];
-                }
+                const char *icon = (mod_index == 3) ? 
+                    get_gui_icon() : mod_icons[mod_index];
                 
                 if (icon) {
                     idx += snprintf(&text[idx], text_size - idx, "%s", icon);
@@ -134,27 +120,14 @@ static void build_display_text(struct zmk_widget_modifiers *widget, uint8_t curr
             }
         }
     } else {
-        // 向右延伸：先按的键在右边（反向顺序）
+        // 向右延伸：反向顺序（先按的在右边）
         for (int i = widget->order_count - 1; i >= 0; i--) {
             uint8_t mod_index = widget->mod_order[i];
-            
-            // 确保这个修饰键当前仍然按下
-            uint8_t mask = 0;
-            switch (mod_index) {
-                case 0: mask = (MOD_LCTL | MOD_RCTL); break;
-                case 1: mask = (MOD_LSFT | MOD_RSFT); break;
-                case 2: mask = (MOD_LALT | MOD_RALT); break;
-                case 3: mask = (MOD_LGUI | MOD_RGUI); break;
-            }
+            uint8_t mask = mod_masks[mod_index];
             
             if (current_mods & mask) {
-                const char *icon = NULL;
-                if (mod_index == 3) {
-                    // GUI键，根据系统类型选择图标
-                    icon = get_gui_icon();
-                } else {
-                    icon = mod_icons[mod_index];
-                }
+                const char *icon = (mod_index == 3) ? 
+                    get_gui_icon() : mod_icons[mod_index];
                 
                 if (icon) {
                     idx += snprintf(&text[idx], text_size - idx, "%s", icon);
@@ -163,6 +136,15 @@ static void build_display_text(struct zmk_widget_modifiers *widget, uint8_t curr
         }
     }
 }
+
+// 定时器回调函数
+static void modifiers_timer_cb(struct k_timer *timer)
+{
+    struct zmk_widget_modifiers *widget = k_timer_user_data_get(timer);
+    zmk_widget_modifiers_update(widget);
+}
+
+static struct k_timer modifiers_timer;
 
 // 更新修饰键显示
 void zmk_widget_modifiers_update(struct zmk_widget_modifiers *widget)
@@ -174,9 +156,9 @@ void zmk_widget_modifiers_update(struct zmk_widget_modifiers *widget)
     uint8_t current_mods = zmk_hid_get_keyboard_report()->body.modifiers;
     
     // 更新按键顺序
-    update_simple_order(widget, current_mods);
+    update_mod_order(widget, current_mods);
     
-    // 如果状态没有变化，不更新显示（但第一次初始化时需要更新）
+    // 如果状态没有变化，不更新显示
     static bool first_update = true;
     if (!first_update && widget->last_mods == current_mods) {
         return;
@@ -207,29 +189,19 @@ void zmk_widget_modifiers_update(struct zmk_widget_modifiers *widget)
 // 设置排列方向
 void zmk_widget_modifiers_set_direction(struct zmk_widget_modifiers *widget, bool extend_left)
 {
-    if (!widget) return;
+    if (!widget) {
+        return;
+    }
     
     widget->extend_left = extend_left;
-    LOG_DBG("Modifiers direction set to: %s", extend_left ? "LEFT" : "RIGHT");
+    LOG_DBG("Modifiers direction: %s", extend_left ? "LEFT" : "RIGHT");
 }
-
-// 定时器回调函数
-static void modifiers_timer_cb(struct k_timer *timer)
-{
-    struct zmk_widget_modifiers *widget = k_timer_user_data_get(timer);
-    zmk_widget_modifiers_update(widget);
-}
-
-static struct k_timer modifiers_timer;
 
 int zmk_widget_modifiers_init(struct zmk_widget_modifiers *widget, lv_obj_t *parent)
 {
     if (!widget || !parent) {
         return -EINVAL;
     }
-    
-    // 保存全局引用
-    global_widget = widget;
     
     // 初始化结构体
     memset(widget, 0, sizeof(struct zmk_widget_modifiers));
@@ -250,8 +222,6 @@ int zmk_widget_modifiers_init(struct zmk_widget_modifiers *widget, lv_obj_t *par
     // 设置字体和颜色
     lv_obj_set_style_text_font(widget->obj, &nerd_modifiers_28, 0);
     lv_obj_set_style_text_color(widget->obj, lv_color_white(), 0);
-    
-    // 注意：不在 init 函数中设置任何位置
     
     // 初始化定时器
     k_timer_init(&modifiers_timer, modifiers_timer_cb, NULL);

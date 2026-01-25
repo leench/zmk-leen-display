@@ -1,10 +1,10 @@
-#include "sysicon.h"
 #include <lvgl.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zmk/display.h>
 #include <zmk/event_manager.h>
 
+#include "sysicon.h"
 #include "raw_hid_bridge.h"
 
 LOG_MODULE_REGISTER(sysicon, LOG_LEVEL_DBG);

@@ -1,0 +1,17 @@
+# drivers/input/Kconfig.cst816d
+menuconfig INPUT_CST816D
+    bool "CST816D Touch Controller"
+    default y
+    depends on DT_HAS_HYNITRON_CST816D_ENABLED
+    help
+      Enable driver for Hynitron CST816D capacitive touch controller.
+
+if INPUT_CST816D
+
+config CONFIG_INPUT_CST816D_INTERRUPT
+    int "Init priority"
+    default 80
+    help
+      CST816D device driver initialization priority.
+
+endif # INPUT_CST816D

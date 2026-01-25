@@ -9,12 +9,16 @@ if(CONFIG_ZMK_DISPLAY_STATUS_SCREEN_CUSTOM)
   zephyr_library_include_directories(${ZEPHYR_CURRENT_CMAKE_DIR}/include)
   zephyr_library_include_directories(include)
 
+  # ===== Display driver（必须受 CONFIG 保护）=====
+  add_subdirectory(drivers)
+
   # ===== 核心源文件 =====
   zephyr_library_sources(
       src/custom_status_screen.c
       src/display_rotate_init.c
       src/raw_hid_bridge.c
       src/brightness.c
+      src/touch_func.c
 
       src/widgets/clock.c
       src/widgets/volume.c
@@ -37,9 +41,6 @@ if(CONFIG_ZMK_DISPLAY_STATUS_SCREEN_CUSTOM)
       src/fonts/nerd_modifiers_28.c
       src/fonts/lv_font_symbol_16.c
   )
-
-  # ===== Display driver（必须受 CONFIG 保护）=====
-  add_subdirectory(drivers/display)
 # endif()
 
 # ===== LVGL port（必须受 CONFIG 保护）=====

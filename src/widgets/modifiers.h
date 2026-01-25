@@ -17,34 +17,10 @@ struct zmk_widget_modifiers {
 // 设置系统类型的函数
 void zmk_widget_modifiers_set_system_type(enum system_type type);
 
-/**
- * @brief 初始化修饰键组件
- * 
- * @param widget 修饰键组件结构体
- * @param parent 父级LVGL对象
- * @return int 0表示成功，负数表示错误
- */
 int zmk_widget_modifiers_init(struct zmk_widget_modifiers *widget, lv_obj_t *parent);
 
-/**
- * @brief 更新修饰键显示
- * 
- * @param widget 修饰键组件结构体
- */
 void zmk_widget_modifiers_update(struct zmk_widget_modifiers *widget);
 
-/**
- * @brief 设置排列方向
- * 
- * @param widget 修饰键组件结构体
- * @param extend_left true=向左延伸，false=向右延伸
- */
 void zmk_widget_modifiers_set_direction(struct zmk_widget_modifiers *widget, bool extend_left);
 
-/**
- * @brief 获取对象
- * 
- * @param widget 修饰键组件结构体
- * @return lv_obj_t* LVGL对象
- */
 lv_obj_t *zmk_widget_modifiers_obj(struct zmk_widget_modifiers *widget);

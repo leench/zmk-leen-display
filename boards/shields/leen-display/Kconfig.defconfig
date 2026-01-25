@@ -152,4 +152,16 @@ config DONGLE_SCREEN_BRIGHTNESS_MODIFIER
     help
       The modifier to start the dongle with. Useful if you found a modifier comfortable for you. Espacially for ambient light. Otherwise no need to change.
 
+config SPI
+    default y
+    
+config I2C
+    default y
+
+config INPUT_CST816D
+    default y
+    
+config INPUT_CST816D_INTERRUPT
+    default y
+    
 endif

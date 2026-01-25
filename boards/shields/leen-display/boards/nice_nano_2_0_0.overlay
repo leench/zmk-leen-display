@@ -42,6 +42,22 @@
          low-power-enable;
       };
    };
+
+    /* I2C0 用于 CST816 */
+    i2c0_default: i2c0_default {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SDA, 0, 20)>,
+                    <NRF_PSEL(TWIM_SCL, 0, 17)>;
+        };
+    };
+
+    i2c0_sleep: i2c0_sleep {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SDA, 0, 20)>,
+                    <NRF_PSEL(TWIM_SCL, 0, 17)>;
+            low-power-enable;
+        };
+    };
 };
 
 
@@ -91,15 +107,24 @@ disp_spi: &spi3 {
    };
 };
 
+/* I2C0 使能 CST816 */
 &i2c0 {
-   status = "okay";
+    status = "okay";
+    clock-frequency = <400000>;
+    pinctrl-0 = <&i2c0_default>;
+    pinctrl-1 = <&i2c0_sleep>;
+    pinctrl-names = "default", "sleep";
 
-   apds9960: apds9960@39 {
-       compatible = "avago,apds9960";
-       status = "okay";
-       reg = <0x39>;
-       int-gpios = <&gpio1 0 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-   };
+    touch_sensor: cst816d@15 {
+         compatible = "hynitron,cst816d";
+         reg = <0x15>;
+         irq-gpios = <&gpio0 6 GPIO_ACTIVE_LOW>;  // new: 0 6
+         rst-gpios = <&gpio0 31 GPIO_ACTIVE_LOW>;
+         rotation = <90>;
+         width = <240>;
+         height = <280>;
+         status = "okay";
+    };
 };
 
 &pwm1 {

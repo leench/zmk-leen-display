@@ -1,0 +1,54 @@
+description: Hynitron CST816D touch controller
+compatible: "hynitron,cst816d"
+
+include: i2c-device.yaml
+
+properties:
+  reg:
+    description: I2C device address
+    type: array
+    required: true
+
+  irq-gpios:
+    type: phandle-array
+    required: true
+    description: Interrupt GPIO pin
+
+  rst-gpios:
+    type: phandle-array
+    required: false
+    description: Reset GPIO pin
+    
+  rotation:
+    type: int
+    required: false
+    description: Screen rotation in degrees (0, 90, 180, 270)
+    default: 0
+    enum: [0, 90, 180, 270]
+    
+  swap-xy:
+    type: boolean
+    required: false
+    description: Swap X and Y coordinates
+    
+  invert-x:
+    type: boolean
+    required: false
+    description: Invert X coordinate
+    
+  invert-y:
+    type: boolean
+    required: false
+    description: Invert Y coordinate
+
+  width:
+    type: int
+    required: false
+    description: Screen width in pixels
+    default: 240
+    
+  height:
+    type: int
+    required: false
+    description: Screen height in pixels
+    default: 240

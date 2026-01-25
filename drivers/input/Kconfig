@@ -1,0 +1,12 @@
+config INPUT_CST816D
+    bool "CST816D touch controller"
+    depends on I2C
+    help
+      Enable CST816D capacitive touch controller driver.
+
+config INPUT_CST816D_INTERRUPT
+    bool "Enable CST816D interrupt mode"
+    default y
+    help
+      Enable interrupt mode for CST816D touch sensor.
+      If disabled, the driver will fall back to polling mode.
