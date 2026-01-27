@@ -4,15 +4,15 @@
         zephyr,touch = &touch_sensor;
     };
 
-    touch_listener: touch_listener {
-        compatible = "zmk,input-listener";
-        status = "okay";
-        device = <&touch_sensor>;
-        // input-processors = <&zip_temp_layer 7 2000>;
+    // touch_listener: touch_listener {
+    //     compatible = "zmk,input-listener";
+    //     status = "okay";
+    //     device = <&touch_sensor>;
+    //     // input-processors = <&zip_temp_layer 7 2000>;
 
-        touch_move {
-            layers = <7>;
-            process-next;
-        };
-    };
+    //     touch_move {
+    //         layers = <7>;
+    //         process-next;
+    //     };
+    // };
 };

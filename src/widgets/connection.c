@@ -83,8 +83,9 @@ static struct connection_state get_connection_state(const zmk_event_t *_eh) {
 // 更新所有widget
 static void connection_update_cb(struct connection_state state) {
     struct zmk_widget_connection *widget;
+    // 使用安全遍历，防止在回调执行过程中列表被修改
     SYS_SLIST_FOR_EACH_CONTAINER(&widgets, widget, node) {
-        if (widget && widget->obj) {
+        if (widget && widget->obj && lv_obj_is_valid(widget->obj)) {
             zmk_widget_connection_update(widget, state);
         }
     }
@@ -103,10 +104,10 @@ ZMK_SUBSCRIPTION(widget_connection, zmk_usb_conn_state_changed);
 // 修改 update_profile_indicators 函数
 static void update_profile_indicators(struct zmk_widget_connection *widget) {
     if (!widget || !widget->indicators_container) return;
-    
+
     // 总是获取当前激活的BLE profile索引
     uint8_t current_profile = zmk_ble_active_profile_index();
-    
+
     // 获取所有profile的绑定状态
     uint32_t profile_bonded_mask = 0;
     for (int i = 0; i < total_profile_slots; i++) {
@@ -115,27 +116,30 @@ static void update_profile_indicators(struct zmk_widget_connection *widget) {
             profile_bonded_mask |= BIT(i);
         }
     }
-    
+
     // 更新所有圆点
     for (int i = 0; i < total_profile_slots; i++) {
         if (!widget->profile_dots[i]) continue;
-        
+
         // 判断是否已绑定
         bool is_bonded = (profile_bonded_mask & BIT(i)) != 0;
-        
+
         // 设置颜色
-        lv_color_t color = is_bonded ? 
-            INDICATOR_BONDED_COLOR : 
+        lv_color_t color = is_bonded ?
+            INDICATOR_BONDED_COLOR :
             INDICATOR_UNBONDED_COLOR;
-        
+
         // 设置透明度：当前选中的profile完全显示，其他变暗
-        lv_opa_t opa = (i == current_profile) ? 
-            INDICATOR_SELECTED_OPA : 
+        lv_opa_t opa = (i == current_profile) ?
+            INDICATOR_SELECTED_OPA :
             INDICATOR_UNSELECTED_OPA;
-        
-        lv_obj_set_style_bg_color(widget->profile_dots[i], color, 0);
-        lv_obj_set_style_bg_opa(widget->profile_dots[i], opa, 0);
-        
+
+        // 检查对象是否仍然有效，避免在对象被删除后访问
+        if (lv_obj_is_valid(widget->profile_dots[i])) {
+            lv_obj_set_style_bg_color(widget->profile_dots[i], color, 0);
+            lv_obj_set_style_bg_opa(widget->profile_dots[i], opa, 0);
+        }
+
         // 如果是当前选中的圆点，添加边框作为背景效果
         // if (i == current_profile) {
         //     lv_obj_set_style_border_opa(widget->profile_dots[i], LV_OPA_100, 0);

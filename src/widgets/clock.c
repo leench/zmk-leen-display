@@ -25,17 +25,21 @@ static void clock_update_display(struct zmk_widget_clock *widget);
  * 显示更新
  * ========================= */
 static void clock_update_display(struct zmk_widget_clock *widget) {
-    if (!widget || !widget->obj || !widget->label_hm || !widget->label_sec) {
+    if (!widget || !widget->obj || !widget->label_hm || !widget->label_sec ||
+        !lv_obj_is_valid(widget->obj) || !lv_obj_is_valid(widget->label_hm) || !lv_obj_is_valid(widget->label_sec)) {
         return;
     }
-    
+
     char buf_hm[8];
     char buf_s[4];
 
-    snprintf(buf_hm, sizeof(buf_hm), "%02d:%02d",
-             widget->hour, widget->minute);
-    snprintf(buf_s, sizeof(buf_s), "%02d",
-             widget->second);
+    // 使用临时变量避免多次访问全局变量
+    uint8_t h = widget->hour;
+    uint8_t m = widget->minute;
+    uint8_t s = widget->second;
+
+    snprintf(buf_hm, sizeof(buf_hm), "%02d:%02d", h, m);
+    snprintf(buf_s, sizeof(buf_s), "%02d", s);
 
     lv_label_set_text(widget->label_hm, buf_hm);
     lv_label_set_text(widget->label_sec, buf_s);
@@ -55,23 +59,33 @@ static void clock_update_display(struct zmk_widget_clock *widget) {
  * ========================= */
 static void clock_tick(struct k_timer *timer) {
     struct zmk_widget_clock *widget = k_timer_user_data_get(timer);
-    
-    if (!widget || !widget->has_sync) {
+
+    if (!widget || !widget->has_sync || !widget->obj || !lv_obj_is_valid(widget->obj)) {
         return;
     }
 
-    widget->second++;
-    if (widget->second >= 60) {
-        widget->second = 0;
-        widget->minute++;
+    // 使用临时变量避免多次访问全局变量
+    uint8_t h = widget->hour;
+    uint8_t m = widget->minute;
+    uint8_t s = widget->second;
+
+    s++;
+    if (s >= 60) {
+        s = 0;
+        m++;
     }
-    if (widget->minute >= 60) {
-        widget->minute = 0;
-        widget->hour++;
+    if (m >= 60) {
+        m = 0;
+        h++;
     }
-    if (widget->hour >= 24) {
-        widget->hour = 0;
+    if (h >= 24) {
+        h = 0;
     }
+
+    // 更新widget的值
+    widget->second = s;
+    widget->minute = m;
+    widget->hour = h;
 
     clock_update_display(widget);
 }
@@ -84,32 +98,30 @@ void zmk_widget_clock_sync(struct zmk_widget_clock *widget,
                            uint8_t minute,
                            uint8_t second,
                            int sync_threshold_s) {
-    if (!widget || !widget->obj) {
+    if (!widget || !widget->obj || !lv_obj_is_valid(widget->obj)) {
         return;
     }
-    
+
     if (!widget->has_sync) {
         widget->hour = hour;
         widget->minute = minute;
         widget->second = second;
         widget->has_sync = true;
-        
+
         // 首次同步后启动定时器
         k_timer_start(&widget->timer, K_SECONDS(1), K_SECONDS(1));
-        
+
         clock_update_display(widget);
         return;
     }
 
-    int local_seconds =
-        widget->hour * 3600 +
-        widget->minute * 60 +
-        widget->second;
+    // 使用临时变量避免多次访问全局变量
+    uint8_t h = widget->hour;
+    uint8_t m = widget->minute;
+    uint8_t s = widget->second;
 
-    int hid_seconds =
-        hour * 3600 +
-        minute * 60 +
-        second;
+    int local_seconds = h * 3600 + m * 60 + s;
+    int hid_seconds = hour * 3600 + minute * 60 + second;
 
     if (abs(hid_seconds - local_seconds) > sync_threshold_s) {
         widget->hour = hour;

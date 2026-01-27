@@ -29,7 +29,7 @@ static void enter_bootloader(void)
 static void work_handler(struct k_work *work)
 {
     struct cst816d_touch touch;
-    
+
     if (cst816d_read_touch(&touch) && touch.gesture == CST816D_GESTURE_LONG_PRESS) {
         LOG_INF("Long press detected - Entering bootloader");
         uint8_t current_layer = zmk_keymap_highest_layer_active();
@@ -38,11 +38,11 @@ static void work_handler(struct k_work *work)
         if (current_layer == 6) {
             LOG_INF("Current layer: 6");
         }
-        
-        k_msleep(1000);
+
+        k_sleep(K_MSEC(1000));
         enter_bootloader();
     }
-    
+
     k_work_schedule((struct k_work_delayable *)work, K_MSEC(100));
 }
 

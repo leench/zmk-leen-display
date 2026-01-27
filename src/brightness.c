@@ -41,32 +41,43 @@ static bool off_through_modifier = false; // 标记是否通过调节器关闭�
 
 static uint8_t clamp_brightness(int8_t value)
 {
-    if (value > max_brightness)
+    // 使用临时变量避免多次读取全局变量
+    uint8_t max_bright = max_brightness;
+    uint8_t min_bright = min_brightness;
+
+    if (value > max_bright)
     {
-        LOG_WRN("CLAMPED: Screen brightness %d would be over %d", value, max_brightness);
-        return max_brightness;
+        LOG_WRN("CLAMPED: Screen brightness %d would be over %d", value, max_bright);
+        return max_bright;
     }
-    if (value < min_brightness)
+    if (value < min_bright)
     {
-        LOG_WRN("CLAMPED: Screen brightness %d would be under %d", value, min_brightness);
-        return min_brightness;
+        LOG_WRN("CLAMPED: Screen brightness %d would be under %d", value, min_bright);
+        return min_bright;
     }
     return value;
 }
 
 static void apply_brightness(uint8_t value)
 {
+    // 对于 LED 设置操作，我们不需要完整的互斥锁，因为它是硬件操作
     led_set_brightness(pwm_leds_dev, DISP_BL, value);
     LOG_INF("Screen brightness set to %d", value);
 }
 
 static int8_t calculate_safe_modifier_change(int8_t desired_change)
 {
-    int16_t current_effective = current_brightness + brightness_modifier;
+    // 使用临时变量避免多次读取全局变量
+    uint8_t curr_brightness = current_brightness;
+    int8_t curr_modifier = brightness_modifier;
+    uint8_t max_bright = max_brightness;
+    uint8_t min_bright = min_brightness;
+
+    int16_t current_effective = curr_brightness + curr_modifier;
     int16_t desired_effective = current_effective + desired_change;
 
     // 根据变化方向确定边界
-    int16_t boundary = (desired_change > 0) ? max_brightness : min_brightness;
+    int16_t boundary = (desired_change > 0) ? max_bright : min_bright;
 
     // 检查期望变化是否在边界内
     if ((desired_change > 0 && desired_effective <= boundary) ||
@@ -89,12 +100,20 @@ static int8_t calculate_safe_modifier_change(int8_t desired_change)
 
 static bool should_screen_turn_off(void)
 {
-    return (current_brightness + brightness_modifier) < min_brightness;
+    // 使用临时变量避免多次读取全局变量
+    uint8_t curr_brightness = current_brightness;
+    int8_t curr_modifier = brightness_modifier;
+    uint8_t min_bright = min_brightness;
+    return (curr_brightness + curr_modifier) < min_bright;
 }
 
 static bool should_screen_turn_on(void)
 {
-    return (current_brightness + brightness_modifier) > min_brightness;
+    // 使用临时变量避免多次读取全局变量
+    uint8_t curr_brightness = current_brightness;
+    int8_t curr_modifier = brightness_modifier;
+    uint8_t min_bright = min_brightness;
+    return (curr_brightness + curr_modifier) > min_bright;
 }
 
 // 渐变请求结构
@@ -179,25 +198,37 @@ static void fade_to_brightness(uint8_t from, uint8_t to)
 // 屏幕开关控制
 static void screen_set_on(bool on)
 {
+    // 使用临时变量避免多次读取全局变量
+    uint8_t curr_brightness = current_brightness;
+    int8_t curr_modifier = brightness_modifier;
+    uint8_t min_bright = min_brightness;
+
     if (on && !screen_on)
     {
         // 检查是否需要调整亮度才能打开屏幕
-        if (should_screen_turn_off())
+        if ((curr_brightness + curr_modifier) < min_bright)
         {
             // 将亮度调整到最小值以上
-            brightness_modifier = min_brightness - current_brightness + 1;
-            LOG_DBG("SCREEN TURN ON: Adjusted modifier to ensure screen can turn on: %d", brightness_modifier);
+            curr_modifier = min_bright - curr_brightness + 1;
+            brightness_modifier = curr_modifier; // 更新全局变量
+            LOG_DBG("SCREEN TURN ON: Adjusted modifier to ensure screen can turn on: %d", curr_modifier);
         }
 
-        fade_to_brightness(0, clamp_brightness(current_brightness + brightness_modifier));
+        uint8_t target_brightness = clamp_brightness(curr_brightness + curr_modifier);
         screen_on = true;
         off_through_modifier = false;
+
+        fade_to_brightness(0, target_brightness);
+
         LOG_INF("Screen on (smooth)");
     }
     else if (!on && screen_on)
     {
-        fade_to_brightness(clamp_brightness(current_brightness + brightness_modifier), 0);
+        uint8_t current_level = clamp_brightness(curr_brightness + curr_modifier);
         screen_on = false;
+
+        fade_to_brightness(current_level, 0);
+
         LOG_INF("Screen off (smooth)");
     }
     else
@@ -213,10 +244,15 @@ void screen_idle_thread(void)
 {
     while (1)
     {
-        if (screen_on || (!screen_on && off_through_modifier))
+        // 使用临时变量避免多次读取全局变量
+        bool current_screen_on = screen_on;
+        bool current_off_through_modifier = off_through_modifier;
+        int64_t current_last_activity = last_activity;
+
+        if (current_screen_on || (!current_screen_on && current_off_through_modifier))
         {
             int64_t now = k_uptime_get();
-            int64_t elapsed_ms = now - last_activity;
+            int64_t elapsed_ms = now - current_last_activity;
             int64_t off_timeout_ms = (int64_t)CONFIG_ZMK_IDLE_TIMEOUT;
 
             if (elapsed_ms >= off_timeout_ms)
@@ -278,18 +314,25 @@ static void increase_brightness(void)
 
     if (safe_increase > 0)
     {
-        brightness_modifier += safe_increase;
-        LOG_DBG("Brightness modifier increased by %d to %d", safe_increase, brightness_modifier);
-        
-        if (screen_on)
+        // 使用临时变量避免多次读取全局变量
+        uint8_t curr_brightness = current_brightness;
+        int8_t curr_modifier = brightness_modifier;
+        bool current_screen_on = screen_on;
+        bool current_off_through_modifier = off_through_modifier;
+
+        curr_modifier += safe_increase;
+        brightness_modifier = curr_modifier; // 更新全局变量
+        LOG_DBG("Brightness modifier increased by %d to %d", safe_increase, curr_modifier);
+
+        if (current_screen_on)
         {
-            uint8_t target = clamp_brightness(current_brightness + brightness_modifier);
-            uint8_t current_effective = clamp_brightness(current_brightness + (brightness_modifier - safe_increase));
+            uint8_t target = clamp_brightness(curr_brightness + curr_modifier);
+            uint8_t current_effective = clamp_brightness(curr_brightness + (curr_modifier - safe_increase));
             fade_to_brightness(current_effective, target);
         }
 
         // 检查是否应该打开屏幕
-        if (should_screen_turn_on() && off_through_modifier)
+        if (should_screen_turn_on() && current_off_through_modifier)
         {
             LOG_INF("Brightness sufficient to turn screen on");
             screen_set_on(true);
@@ -309,13 +352,19 @@ static void decrease_brightness(void)
 
     if (safe_decrease < 0)
     {
-        brightness_modifier += safe_decrease;
-        LOG_DBG("Brightness modifier decreased by %d to %d", -safe_decrease, brightness_modifier);
-        
-        if (screen_on)
+        // 使用临时变量避免多次读取全局变量
+        uint8_t curr_brightness = current_brightness;
+        int8_t curr_modifier = brightness_modifier;
+        bool current_screen_on = screen_on;
+
+        curr_modifier += safe_decrease;
+        brightness_modifier = curr_modifier; // 更新全局变量
+        LOG_DBG("Brightness modifier decreased by %d to %d", -safe_decrease, curr_modifier);
+
+        if (current_screen_on)
         {
-            uint8_t target = clamp_brightness(current_brightness + brightness_modifier);
-            uint8_t current_effective = clamp_brightness(current_brightness + (brightness_modifier - safe_decrease));
+            uint8_t target = clamp_brightness(curr_brightness + curr_modifier);
+            uint8_t current_effective = clamp_brightness(curr_brightness + (curr_modifier - safe_decrease));
             fade_to_brightness(current_effective, target);
         }
 
@@ -323,7 +372,7 @@ static void decrease_brightness(void)
         if (should_screen_turn_off())
         {
             LOG_INF("Brightness too low, turning screen off");
-            off_through_modifier = true;
+            off_through_modifier = true; // 更新全局变量
             screen_set_on(false);
         }
     }
@@ -362,7 +411,9 @@ static int key_listener(const zmk_event_t *eh)
         {
             LOG_INF("Toggle screen key recognized!");
             // 切换屏幕开关
-            if (screen_on)
+            bool current_screen_on = screen_on;
+
+            if (current_screen_on)
             {
                 off_through_modifier = true;
                 screen_set_on(false);
@@ -378,14 +429,19 @@ static int key_listener(const zmk_event_t *eh)
 
 #if CONFIG_ZMK_IDLE_TIMEOUT > 0
     last_activity = k_uptime_get();
-    if (!screen_on && !off_through_modifier)
+    bool current_screen_on = screen_on;
+    bool current_off_through_modifier = off_through_modifier;
+
+    if (!current_screen_on && !current_off_through_modifier)
     {
         screen_set_on(true);
         k_wakeup(screen_idle_tid);
     }
 #else
     // 没有空闲线程：直接打开屏幕
-    if (!screen_on)
+    bool current_screen_on = screen_on;
+
+    if (!current_screen_on)
     {
         screen_set_on(true);
     }
@@ -404,17 +460,18 @@ static int init_fixed_brightness(void)
 {
     // 设置初始亮度
     uint8_t initial_brightness = clamp_brightness(current_brightness + brightness_modifier);
+
     apply_brightness(initial_brightness);
-    
+
     last_activity = k_uptime_get();
-    
+
 #if CONFIG_ZMK_IDLE_TIMEOUT > 0
     // 启动时唤醒空闲线程
     k_wakeup(screen_idle_tid);
 #else
     LOG_INF("Screen idle timeout disabled");
 #endif
-    
+
     return 0;
 }
 

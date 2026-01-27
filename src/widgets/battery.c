@@ -32,8 +32,10 @@ static battery_ui_t battery_uis[ZMK_SPLIT_BLE_PERIPHERAL_COUNT];
 
 
 static int8_t last_battery_levels[ZMK_SPLIT_BLE_PERIPHERAL_COUNT];
+static struct k_mutex battery_mutex;
 
 static void init_peripheral_tracking(void) {
+    k_mutex_init(&battery_mutex);
     for (int i = 0; i < (ZMK_SPLIT_BLE_PERIPHERAL_COUNT); i++) {
         last_battery_levels[i] = -1; // -1 indicates never seen before
     }
@@ -41,19 +43,22 @@ static void init_peripheral_tracking(void) {
 
 static bool is_peripheral_reconnecting(uint8_t source, uint8_t new_level) {
     if (source >= ZMK_SPLIT_BLE_PERIPHERAL_COUNT) return false;
-    
+
     bool reconnecting = false;
+
+    k_mutex_lock(&battery_mutex, K_FOREVER);
     int8_t last_level = last_battery_levels[source];
-    
+
     // 情况1：从未见过（-1）且现在有电量（>0）
     // 情况2：之前断开（0）且现在有电量（>0）
     if ((last_level <= 0) && (new_level > 0)) {
         reconnecting = true;
     }
-    
+
     // 更新电量记录
     last_battery_levels[source] = new_level;
-    
+    k_mutex_unlock(&battery_mutex);
+
     return reconnecting;
 }
 
@@ -110,10 +115,13 @@ static void set_battery_display(uint8_t source, uint8_t level) {
 // 电池事件回调
 static void battery_update_cb(struct battery_state state) {
     LOG_DBG("电池更新: 源=%d, 电量=%d%%", state.source, state.level);
-    
+
     struct zmk_widget_battery *widget;
+    // 使用安全遍历，防止在回调执行过程中列表被修改
     SYS_SLIST_FOR_EACH_CONTAINER(&widgets, widget, node) {
-        set_battery_display(state.source, state.level);
+        if (widget && widget->obj && lv_obj_is_valid(widget->obj)) {
+            set_battery_display(state.source, state.level);
+        }
     }
 }
 
