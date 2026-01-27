@@ -16,6 +16,7 @@ enum anim_state {
 struct zmk_widget_bongo_cat {
     lv_obj_t *obj;
     sys_snode_t node;
+    enum anim_state current_state;
 };
 
 int zmk_widget_bongo_cat_init(struct zmk_widget_bongo_cat *widget, lv_obj_t *parent);

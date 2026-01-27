@@ -12,7 +12,7 @@
 #include "widgets/sysicon.h"
 #include "widgets/modifiers.h"
 
-LOG_MODULE_REGISTER(custom_status_screen, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(custom_status_screen, LOG_LEVEL_INF);
 
 #define HID_UPDATE_PERIOD_MS 50  // 每50ms更新一次
 

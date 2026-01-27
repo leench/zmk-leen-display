@@ -1,7 +1,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <string.h>
-LOG_MODULE_REGISTER(bongo_cat_widget, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(bongo_cat_widget, LOG_LEVEL_INF);
 
 #include <zmk/display.h>
 #include <zmk/event_manager.h>
@@ -124,26 +124,45 @@ static void stop_fast_color_anim(lv_obj_t *obj) {
 
 /* ================= 动画切换逻辑 ================= */
 
-static void set_animation(lv_obj_t *anim_obj,
+static void set_animation(struct zmk_widget_bongo_cat *widget,
                           struct bongo_cat_wpm_status_state state) {
-    if (!anim_obj || !lv_obj_is_valid(anim_obj)) return;
+    if (!widget || !widget->obj || !lv_obj_is_valid(widget->obj)) return;
+
+    enum anim_state new_state;
+
+    if (state.wpm < 5) {
+        new_state = anim_state_idle;
+    } else if (state.wpm < 30) {
+        new_state = anim_state_slow;
+    } else if (state.wpm < 75) {
+        new_state = anim_state_mid;
+    } else {
+        new_state = anim_state_fast;
+    }
+
+    if (widget->current_state == new_state) {
+        return;
+    }
+
+    widget->current_state = new_state;
+    lv_obj_t *anim_obj = widget->obj;
 
     /* 停止当前动画 */
     stop_fast_color_anim(anim_obj);
 
-    if (state.wpm < 5) {
+    if (new_state == anim_state_idle) {
         lv_animimg_set_src(anim_obj, SRC(idle_imgs));
         lv_animimg_set_duration(anim_obj, ANIMATION_SPEED_IDLE);
         lv_animimg_set_repeat_count(anim_obj, LV_ANIM_REPEAT_INFINITE);
         lv_animimg_start(anim_obj);
 
-    } else if (state.wpm < 30) {
+    } else if (new_state == anim_state_slow) {
         lv_animimg_set_src(anim_obj, SRC(slow_imgs));
         lv_animimg_set_duration(anim_obj, ANIMATION_SPEED_SLOW);
         lv_animimg_set_repeat_count(anim_obj, LV_ANIM_REPEAT_INFINITE);
         lv_animimg_start(anim_obj);
 
-    } else if (state.wpm < 75) {
+    } else if (new_state == anim_state_mid) {
         lv_animimg_set_src(anim_obj, SRC(mid_imgs));
         lv_animimg_set_duration(anim_obj, ANIMATION_SPEED_MID);
         lv_animimg_set_repeat_count(anim_obj, LV_ANIM_REPEAT_INFINITE);
@@ -175,7 +194,7 @@ void bongo_cat_wpm_status_update_cb(struct bongo_cat_wpm_status_state state) {
     struct zmk_widget_bongo_cat *widget;
     SYS_SLIST_FOR_EACH_CONTAINER(&widgets, widget, node) {
         if (widget && widget->obj) {
-            set_animation(widget->obj, state);
+            set_animation(widget, state);
         }
     }
 }
@@ -213,8 +232,9 @@ int zmk_widget_bongo_cat_init(struct zmk_widget_bongo_cat *widget,
     lv_obj_center(widget->obj);
     
     // 初始化为空闲状态
+    widget->current_state = anim_state_none;
     struct bongo_cat_wpm_status_state init_state = { .wpm = 0 };
-    set_animation(widget->obj, init_state);
+    set_animation(widget, init_state);
     
     sys_slist_append(&widgets, &widget->node);
     widget_bongo_cat_init();
@@ -234,7 +254,7 @@ void zmk_widget_bongo_cat_set_wpm(struct zmk_widget_bongo_cat *widget,
     }
     
     struct bongo_cat_wpm_status_state state = {.wpm = wpm};
-    set_animation(widget->obj, state);
+    set_animation(widget, state);
 }
 
 /* ================= 销毁函数 ================= */

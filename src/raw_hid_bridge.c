@@ -7,7 +7,7 @@
 
 #include "raw_hid_bridge.h"
 
-LOG_MODULE_REGISTER(raw_hid_bridge, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(raw_hid_bridge, LOG_LEVEL_INF);
 
 ZMK_EVENT_IMPL(connected_notification);
 ZMK_EVENT_IMPL(time_notification);
