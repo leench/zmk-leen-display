@@ -140,9 +140,9 @@ int zmk_widget_sysicon_init(struct zmk_widget_sysicon *widget, lv_obj_t *parent,
         
         LOG_DBG("Sysicon aligned to bongocat left side");
     } else {
-        // 如果没有bongocat对象，使用默认位置（左上角）
-        lv_obj_align(widget->obj, LV_ALIGN_TOP_LEFT, 10, 10);
-        LOG_WRN("No bongocat object provided, using default position");
+        // 如果没有bongocat对象，使用默认位置（右上角）
+        lv_obj_align(widget->obj, LV_ALIGN_TOP_RIGHT, -15, 12);
+        LOG_WRN("No bongocat object provided, using default position (top right)");
     }
 
     // 初始显示

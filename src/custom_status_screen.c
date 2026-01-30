@@ -25,7 +25,9 @@ static struct zmk_widget_volume volume_widget;
 static struct zmk_widget_battery battery_widget;
 static struct zmk_widget_layer layer_widget;
 static struct zmk_widget_connection connection_widget;
+#if IS_ENABLED(CONFIG_ZMK_WIDGET_BONGO_CAT)
 static struct zmk_widget_bongo_cat bongo_cat_widget;
+#endif
 static struct zmk_widget_sysicon sysicon_widget;
 static struct zmk_widget_modifiers modifiers_widget;
 
@@ -54,13 +56,19 @@ lv_obj_t *zmk_display_status_screen(void) {
     lv_obj_align(zmk_widget_connection_obj(&connection_widget), LV_ALIGN_TOP_LEFT, 8, 12);
 
 
+#if IS_ENABLED(CONFIG_ZMK_WIDGET_BONGO_CAT)
     /* ---- 初始化 bonge cat Widget ---- */
     zmk_widget_bongo_cat_init(&bongo_cat_widget, screen);
     lv_obj_align(zmk_widget_bongo_cat_obj(&bongo_cat_widget), LV_ALIGN_TOP_RIGHT, -15, 12);
+#endif
 
 
     /* ---- 初始化 system icon Widget ---- */
+#if IS_ENABLED(CONFIG_ZMK_WIDGET_BONGO_CAT)
     zmk_widget_sysicon_init(&sysicon_widget, screen, &bongo_cat_widget);
+#else
+    zmk_widget_sysicon_init(&sysicon_widget, screen, NULL);
+#endif
 
 
     /* ---- 初始化 modifiers Widget ---- */

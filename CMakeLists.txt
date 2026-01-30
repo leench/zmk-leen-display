@@ -25,11 +25,16 @@ if(CONFIG_ZMK_DISPLAY_STATUS_SCREEN_CUSTOM)
       src/widgets/battery.c
       src/widgets/layer.c
       src/widgets/connection.c
-      src/widgets/bongo_cat.c
-      src/widgets/bongo_cat_images_inverted.c
       src/widgets/sysicon.c
       src/widgets/modifiers.c
   )
+
+  if(CONFIG_ZMK_WIDGET_BONGO_CAT)
+    zephyr_library_sources(
+        src/widgets/bongo_cat.c
+        src/widgets/bongo_cat_images_inverted.c
+    )
+  endif()
 
   # ===== 字体文件：必须也进 zephyr_library，不要碰 app =====
   zephyr_library_sources(
