@@ -66,6 +66,16 @@ static bool is_peripheral_reconnecting(uint8_t source, uint8_t new_level) {
 static void set_battery_display(uint8_t source, uint8_t level) {
     if (source >= ZMK_SPLIT_BLE_PERIPHERAL_COUNT) return;
 
+    // 获取上一次的状态进行对比
+    static int8_t confirmed_levels[ZMK_SPLIT_BLE_PERIPHERAL_COUNT] = { [0 ... ZMK_SPLIT_BLE_PERIPHERAL_COUNT-1] = -1 };
+    
+    // 如果电量没有变化，直接返回，避免无效的重绘
+    if (confirmed_levels[source] == (int8_t)level) {
+        return;
+    }
+
+    LOG_DBG("电池显示更新: 源=%d, 电量=%d%%", source, level);
+
     if (is_peripheral_reconnecting(source, level)) {
         // 如果是重新连接，唤醒屏幕
         brightness_wake_screen_on_reconnect();
@@ -74,13 +84,12 @@ static void set_battery_display(uint8_t source, uint8_t level) {
     battery_ui_t *ui = &battery_uis[source];
     
     if (!ui || !ui->bar || !ui->label || !lv_obj_is_valid(ui->bar) || !lv_obj_is_valid(ui->label)) {
-        LOG_WRN("电池 UI 对象无效，源: %d", source);
         return;
     }
     
     if (level == 0) {
-        // 未连接状态：显示红色电池条
-        lv_bar_set_value(ui->bar, 100, LV_ANIM_ON); // 显示满条
+        // 未连接状态：显示红色电池条，关闭动画
+        lv_bar_set_value(ui->bar, 100, LV_ANIM_OFF); 
         lv_obj_set_style_bg_color(ui->bar, lv_color_make(180, 40, 40), LV_PART_INDICATOR);
         lv_obj_set_style_bg_color(ui->bar, lv_color_make(80, 20, 20), LV_PART_MAIN);
         lv_label_set_text(ui->label, "--");
@@ -110,18 +119,16 @@ static void set_battery_display(uint8_t source, uint8_t level) {
         // 更新标签文本
         lv_label_set_text_fmt(ui->label, "%d", level);
     }
+
+    // 更新确认过的电量
+    confirmed_levels[source] = (int8_t)level;
 }
 
 // 电池事件回调
 static void battery_update_cb(struct battery_state state) {
-    LOG_DBG("电池更新: 源=%d, 电量=%d%%", state.source, state.level);
-
-    struct zmk_widget_battery *widget;
-    // 使用安全遍历，防止在回调执行过程中列表被修改
-    SYS_SLIST_FOR_EACH_CONTAINER(&widgets, widget, node) {
-        if (widget && widget->obj && lv_obj_is_valid(widget->obj)) {
-            set_battery_display(state.source, state.level);
-        }
+    // 检查是否有任何 widget 实例存在且有效，如果存在则更新全局 UI
+    if (!sys_slist_is_empty(&widgets)) {
+        set_battery_display(state.source, state.level);
     }
 }
 
