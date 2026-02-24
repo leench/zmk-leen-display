@@ -29,8 +29,8 @@ static const lv_color_t system_colors[] = {
     // Windows
     LV_COLOR_MAKE(9, 224, 254),
 
-    // Linux
-    LV_COLOR_MAKE(0, 160, 190),
+    // Linux (亮黄色，更醒目)
+    LV_COLOR_MAKE(255, 210, 0),
 
     // macOS
     LV_COLOR_MAKE(225, 225, 230),
