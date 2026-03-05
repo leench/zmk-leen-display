@@ -87,7 +87,7 @@ ZMK_SUBSCRIPTION(widget_volume, volume_notification);
 
 int zmk_widget_volume_init(struct zmk_widget_volume *widget, lv_obj_t *parent, 
                           struct zmk_widget_clock *clock_widget) {
-    if (!widget || !parent || !clock_widget) {
+    if (!widget || !parent) {
         return -EINVAL;
     }
 
@@ -109,12 +109,18 @@ int zmk_widget_volume_init(struct zmk_widget_volume *widget, lv_obj_t *parent,
     lv_obj_set_style_bg_color(widget->bar, COLOR_GRAY, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(widget->bar, LV_OPA_COVER, LV_PART_MAIN);
 
-    lv_coord_t width = lv_obj_get_width(clock_widget->label_hm) + 
-                      lv_obj_get_width(clock_widget->label_sec) + 
-                      CLOCK_SPACING;
-    
-    lv_obj_set_size(widget->bar, width, BAR_HEIGHT);
-    lv_obj_align_to(widget->obj, clock_widget->label_hm, LV_ALIGN_OUT_BOTTOM_LEFT, 0, ALIGN_SPACING);
+    if (clock_widget) {
+        lv_coord_t width = lv_obj_get_width(clock_widget->label_hm) + 
+                          lv_obj_get_width(clock_widget->label_sec) + 
+                          CLOCK_SPACING;
+        
+        lv_obj_set_size(widget->bar, width, BAR_HEIGHT);
+        lv_obj_align_to(widget->obj, clock_widget->label_hm, LV_ALIGN_OUT_BOTTOM_LEFT, 0, ALIGN_SPACING);
+    } else {
+        // 如果没有时钟widget，使用固定宽度并对齐到屏幕中心下方
+        lv_obj_set_size(widget->bar, 80, BAR_HEIGHT);
+        lv_obj_align(widget->obj, LV_ALIGN_CENTER, 0, 20);
+    }
 
     active_volume_widget = widget;
 

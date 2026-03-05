@@ -19,19 +19,21 @@ if(CONFIG_ZMK_DISPLAY_STATUS_SCREEN_CUSTOM)
       src/raw_hid_bridge.c
       src/brightness.c
       src/touch_func.c
-
-      src/widgets/clock.c
-      src/widgets/volume.c
-      src/widgets/battery.c
-      src/widgets/layer.c
-      src/widgets/connection.c
-      src/widgets/sysicon.c
-      src/widgets/modifiers.c
   )
+
+  zephyr_library_sources_ifdef(CONFIG_ZMK_WIDGET_CLOCK      src/widgets/clock.c)
+  zephyr_library_sources_ifdef(CONFIG_ZMK_WIDGET_VOLUME     src/widgets/volume.c)
+  zephyr_library_sources_ifdef(CONFIG_ZMK_WIDGET_BATTERY    src/widgets/battery.c)
+  zephyr_library_sources_ifdef(CONFIG_ZMK_WIDGET_LAYER      src/widgets/layer.c)
+  zephyr_library_sources_ifdef(CONFIG_ZMK_WIDGET_CONNECTION src/widgets/connection.c)
+  zephyr_library_sources_ifdef(CONFIG_ZMK_WIDGET_SYSICON    src/widgets/sysicon.c)
+  zephyr_library_sources_ifdef(CONFIG_ZMK_WIDGET_MODIFIERS  src/widgets/modifiers.c)
+  zephyr_library_sources_ifdef(CONFIG_ZMK_WIDGET_WPM_STATUS src/widgets/wpm_status.c)
 
   if(CONFIG_ZMK_WIDGET_BONGO_CAT)
     zephyr_library_sources(
         src/widgets/bongo_cat.c
+        src/widgets/bongo_cat_images.c
         src/widgets/bongo_cat_images_inverted.c
     )
   endif()
