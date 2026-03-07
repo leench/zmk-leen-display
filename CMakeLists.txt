@@ -33,7 +33,7 @@ if(CONFIG_ZMK_DISPLAY_STATUS_SCREEN_CUSTOM)
   if(CONFIG_ZMK_WIDGET_BONGO_CAT)
     zephyr_library_sources(
         src/widgets/bongo_cat.c
-        src/widgets/bongo_cat_images.c
+        # src/widgets/bongo_cat_images.c
         src/widgets/bongo_cat_images_inverted.c
     )
   endif()
