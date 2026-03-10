@@ -96,7 +96,8 @@ static void set_battery_display(uint8_t source, uint8_t level) {
         lv_obj_set_style_text_color(ui->label, lv_color_hex(0xFFB802), 0);
     } else {
         // 正常连接状态
-        lv_bar_set_value(ui->bar, level, LV_ANIM_ON);
+        // lv_bar_set_value(ui->bar, level, LV_ANIM_ON);
+        lv_bar_set_value(ui->bar, level, LV_ANIM_OFF);
         
         // 设置颜色
         if (level < 20) {
@@ -172,7 +173,7 @@ static void create_battery_ui(lv_obj_t *parent, int index) {
     lv_obj_set_style_bg_opa(bar, 255, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(bar, 255, LV_PART_INDICATOR);
     lv_obj_set_style_radius(bar, 1, LV_PART_MAIN);
-    lv_obj_set_style_anim_time(bar, 250, 0);
+    // lv_obj_set_style_anim_time(bar, 250, 0);
     lv_bar_set_value(bar, 100, LV_ANIM_OFF); // 初始显示满条（红色）
 
     // 标签

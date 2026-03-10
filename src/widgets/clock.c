@@ -45,6 +45,8 @@ static void clock_update_display(struct zmk_widget_clock *widget) {
     lv_label_set_text(widget->label_sec, buf_s);
 
     /* 重新对齐，防止文本宽度变化 */
+    /* 已经使用等宽字体，初始化对齐一次即可，此处注释掉以优化性能 */
+    /*
     lv_obj_align_to(
         widget->label_sec,
         widget->label_hm,
@@ -52,6 +54,7 @@ static void clock_update_display(struct zmk_widget_clock *widget) {
         6,
         2
     );
+    */
 }
 
 /* =========================
