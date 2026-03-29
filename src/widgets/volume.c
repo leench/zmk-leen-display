@@ -28,17 +28,23 @@ lv_obj_t *zmk_widget_volume_obj(struct zmk_widget_volume *widget) {
 static lv_color_t calculate_color(int volume) {
     lv_color_t color;
     
-    if (volume <= 25) {
+    if (volume < 15) {
+        color = lv_color_make(150, 255, 150); // 浅绿
+    } else if (volume <= 20) {
+        // 15~20 渐变 浅绿→绿
+        uint8_t t = (volume - 15) * 150 / 5;
+        color = lv_color_make(150 - t, 255, 150 - t);
+    } else if (volume < 45) {
         color = lv_color_make(0, 255, 0); // 绿
-    } else if (volume <= 30) {
-        // 25~30 渐变 绿→黄
-        uint8_t t = (volume - 25) * 255 / 5;
+    } else if (volume <= 50) {
+        // 45~50 渐变 绿→黄
+        uint8_t t = (volume - 45) * 255 / 5;
         color = lv_color_make(t, 255, 0);
-    } else if (volume <= 65) {
+    } else if (volume < 75) {
         color = lv_color_make(255, 255, 0); // 黄
-    } else if (volume <= 70) {
-        // 65~70 渐变 黄→红
-        uint8_t t = (volume - 65) * 255 / 5;
+    } else if (volume <= 80) {
+        // 75~80 渐变 黄→红
+        uint8_t t = (volume - 75) * 255 / 5;
         color = lv_color_make(255, 255 - t, 0);
     } else {
         color = lv_color_make(255, 0, 0); // 红
